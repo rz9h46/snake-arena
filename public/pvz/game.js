@@ -13,9 +13,9 @@ const PLANTS = {
 };
 
 const ZOMBIE_TYPES = {
-  normal: { ico: '🧟', hp: 80,  speed: 12, dmg: 12, name: 'Normal' },
-  cone:   { ico: '🧟', hp: 200, speed: 12, dmg: 12, name: 'Cono', accIco: '🦺' },
-  bucket: { ico: '🧟', hp: 400, speed: 11, dmg: 12, name: 'Balde', accIco: '🪣' }
+  normal: { ico: '🧟', hp: 80,  speed: 9,  dmg: 12, name: 'Normal' },
+  cone:   { ico: '🧟', hp: 200, speed: 9,  dmg: 12, name: 'Cono', accIco: '🦺' },
+  bucket: { ico: '🧟', hp: 400, speed: 8,  dmg: 12, name: 'Balde', accIco: '🪣' }
 };
 
 const PLANT_KEYS = ['sunflower', 'peashooter', 'wallnut', 'snowpea', 'cherry'];
@@ -120,12 +120,18 @@ function spawnSun(x, y, target) {
 // ==================== Zombies / oleadas ====================
 function buildWave(n) {
   const queue = [];
-  const baseCount = 4 + Math.floor(n * 1.5);
+  // wave 1 más liviana, después escala
+  const baseCount = n === 1 ? 3 : Math.floor(2 + n * 1.3);
+  // primer zombie tarda mucho en wave 1 (25s prep), después 6s entre waves
+  const firstDelay = n === 1 ? 25 : 6;
   for (let i = 0; i < baseCount; i++) {
     let kind = 'normal';
     if (n >= 3 && Math.random() < 0.3) kind = 'cone';
     if (n >= 5 && Math.random() < 0.2) kind = 'bucket';
-    queue.push({ kind, delay: rand(1.5, 4) });
+    // delay entre zombies: lento al principio del juego, se acelera con waves
+    const baseDelay = n === 1 ? 8 : Math.max(3, 7 - n * 0.3);
+    const delay = i === 0 ? firstDelay : rand(baseDelay - 1.5, baseDelay + 1.5);
+    queue.push({ kind, delay });
   }
   state.spawnQueue = queue;
   state.zombiesInWave = baseCount;
@@ -805,35 +811,30 @@ function drawCherry(cx, gy, t) {
 }
 
 // ==================== Sprites de zombies ====================
-// Andar zombie (lurch): ciclo lento de 4 fases con un pie que arrastra.
-// Inspirado en PvZ original.
+// Estilo PvZ original: piel gris-tan pálida, camisa gris con corbata roja,
+// calvo con un mechón, expresión zombie boba/dazed (no enojado).
+// Andar lurch: un pie planta, el otro arrastra.
 function drawZombieSprite(z) {
   const def = ZOMBIE_TYPES[z.kind];
   const cx = z.x + CELL_W / 2;
   const groundY = z.row * CELL_H + CELL_H * 0.96;
   const time = performance.now() * 0.001;
   const isEating = state.plants.some(pl => pl.row === z.row && pl.col === Math.floor((z.x - 6) / CELL_W));
-  // ciclo de andar zombie: lento, arrastrando
-  const cycle = isEating ? 0 : ((time * 1.3 + z.x * 0.005) % 1);
-  // dos fases: 0..0.5 (paso adelante), 0.5..1 (arrastra el pie)
+  const cycle = isEating ? 0 : ((time * 1.0 + z.x * 0.005) % 1);
   let leftFootX, rightFootX, leanY;
   if (cycle < 0.5) {
-    // pie izq plantado, pie derecho cruza arrastrándose
     const p = cycle / 0.5;
-    rightFootX = -2 + p * 8;     // de atrás hacia adelante
+    rightFootX = -2 + p * 8;
     leftFootX = 2;
-    leanY = 1 + Math.sin(p * Math.PI) * 1.5;
+    leanY = 1 + Math.sin(p * Math.PI) * 1.4;
   } else {
-    // pie der plantado, pie izq arrastra atrás-adelante muy lento
     const p = (cycle - 0.5) / 0.5;
     leftFootX = 2 - p * 6;
     rightFootX = 6;
     leanY = 1 + Math.sin(p * Math.PI) * 0.8;
   }
-  // sway lateral mínimo (cabezada zombie hacia adelante)
-  const headLean = Math.sin(time * 1.3 + z.x * 0.005) * 1.2;
+  const headLean = Math.sin(time * 1.0 + z.x * 0.005) * 1.0;
 
-  // medidas (más grandes)
   const headR = 13;
   const bodyW = 24;
   const bodyH = 22;
@@ -841,162 +842,202 @@ function drawZombieSprite(z) {
   const bodyTop = groundY - legH - bodyH - leanY;
   const headY = bodyTop - headR - 1;
 
-  // sombra extendida (refleja zombie inclinado)
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  // paleta PvZ
+  const SKIN = '#c4d0a8';
+  const SKIN_DARK = '#9aa888';
+  const SHIRT = '#a8a8a0';
+  const SHIRT_DARK = '#7a7a72';
+  const COLLAR = '#dcdcd0';
+  const TIE = '#7a1818';
+  const TIE_HI = '#a82828';
+  const PANTS = '#5a4830';
+  const PANTS_DARK = '#3a2c18';
+  const SHOES = '#3a2010';
+  const HAIR = '#3a2010';
+  const OUT = '#1a1208';
+
+  // sombra
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
   ctx.beginPath();
   ctx.ellipse(cx + 2, groundY, 22, 5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ===== piernas (lurching) =====
-  // pierna izquierda
-  ctx.strokeStyle = '#1a1208';
+  // ===== piernas (pantalón + zapatos) =====
+  ctx.strokeStyle = PANTS;
   ctx.lineWidth = 7;
   ctx.lineCap = 'square';
   ctx.beginPath();
   ctx.moveTo(cx - 6, bodyTop + bodyH - 2);
-  ctx.lineTo(cx - 6 + leftFootX, groundY - 2);
+  ctx.lineTo(cx - 6 + leftFootX, groundY - 4);
   ctx.stroke();
-  // pierna derecha
   ctx.beginPath();
   ctx.moveTo(cx + 6, bodyTop + bodyH - 2);
-  ctx.lineTo(cx + 6 + rightFootX, groundY - 2);
+  ctx.lineTo(cx + 6 + rightFootX, groundY - 4);
   ctx.stroke();
-  // pantalones rasgados (color marron oscuro)
-  ctx.fillStyle = '#3a2810';
-  ctx.fillRect(cx - 12, bodyTop + bodyH - 6, 24, 10);
-  // jirones
-  ctx.fillStyle = '#2a1810';
-  ctx.fillRect(cx - 9, bodyTop + bodyH - 1, 4, 6);
-  ctx.fillRect(cx + 5, bodyTop + bodyH + 1, 3, 5);
+  // sombra lateral en pantalón
+  ctx.strokeStyle = PANTS_DARK;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, bodyTop + bodyH - 2);
+  ctx.lineTo(cx - 4 + leftFootX, groundY - 4);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx + 8, bodyTop + bodyH - 2);
+  ctx.lineTo(cx + 8 + rightFootX, groundY - 4);
+  ctx.stroke();
+  // zapatos marrones
+  ctx.fillStyle = SHOES;
+  ctx.fillRect(cx - 9 + leftFootX, groundY - 4, 7, 4);
+  ctx.fillRect(cx + 3 + rightFootX, groundY - 4, 7, 4);
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx - 9 + leftFootX, groundY - 1, 7, 1);
+  ctx.fillRect(cx + 3 + rightFootX, groundY - 1, 7, 1);
+  // cintura
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx - 12, bodyTop + bodyH - 4, 24, 2);
+  ctx.fillStyle = PANTS;
+  ctx.fillRect(cx - 12, bodyTop + bodyH - 2, 24, 4);
 
-  // ===== cuerpo (torso) =====
-  // outline negro
-  ctx.fillStyle = '#1a1208';
-  ctx.fillRect(cx - bodyW / 2 - 1, bodyTop - 1, bodyW + 2, bodyH + 2);
-  // camisa rasgada gris-verdosa
-  ctx.fillStyle = '#7a7e60';
-  ctx.fillRect(cx - bodyW / 2, bodyTop, bodyW, bodyH);
-  // sombra interior (lado derecho)
-  ctx.fillStyle = '#5a5e44';
-  ctx.fillRect(cx + bodyW / 2 - 5, bodyTop, 5, bodyH);
-  // manchas de sangre/podredumbre
-  ctx.fillStyle = '#5a2010';
-  ctx.fillRect(cx - 4, bodyTop + 6, 5, 3);
-  ctx.fillRect(cx + 2, bodyTop + 13, 4, 3);
-  // jirones en el pecho (piel verde asomando)
-  ctx.fillStyle = '#a8c8a0';
-  ctx.fillRect(cx - 2, bodyTop + 9, 5, 3);
-  // costillas asomando (líneas blancas)
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(cx - 1, bodyTop + 9, 3, 1);
-  ctx.fillRect(cx - 1, bodyTop + 11, 3, 1);
+  // ===== torso (camisa gris) =====
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx - bodyW / 2 - 1, bodyTop - 1, bodyW + 2, bodyH);
+  ctx.fillStyle = SHIRT;
+  ctx.fillRect(cx - bodyW / 2, bodyTop, bodyW, bodyH - 2);
+  ctx.fillStyle = SHIRT_DARK;
+  ctx.fillRect(cx + bodyW / 2 - 5, bodyTop, 5, bodyH - 2);
+  // botones
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx - 1, bodyTop + 3, 1, 1);
+  ctx.fillRect(cx - 1, bodyTop + 9, 1, 1);
+  ctx.fillRect(cx - 1, bodyTop + 15, 1, 1);
+  // cuello en V
+  ctx.fillStyle = COLLAR;
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, bodyTop);
+  ctx.lineTo(cx, bodyTop + 5);
+  ctx.lineTo(cx + 6, bodyTop);
+  ctx.lineTo(cx + 4, bodyTop - 1);
+  ctx.lineTo(cx, bodyTop + 3);
+  ctx.lineTo(cx - 4, bodyTop - 1);
+  ctx.closePath();
+  ctx.fill();
 
-  // ===== brazos extendidos al frente (zombie pose) =====
-  // brazo trasero (más arriba, atrás)
-  ctx.fillStyle = '#1a1208';
-  ctx.fillRect(cx - 4, bodyTop + 3, 22, 7);
-  ctx.fillStyle = '#a8c8a0';
-  ctx.fillRect(cx - 3, bodyTop + 4, 20, 5);
-  // mano trasera
-  ctx.fillStyle = '#a8c8a0';
-  ctx.fillRect(cx + 17, bodyTop + 3, 5, 8);
-  ctx.fillStyle = '#1a1208';
-  ctx.fillRect(cx + 22, bodyTop + 5, 2, 2);   // garra
-  ctx.fillRect(cx + 22, bodyTop + 8, 2, 2);
+  // ===== corbata roja icónica =====
+  // nudo
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx - 3, bodyTop + 1, 6, 4);
+  ctx.fillStyle = TIE;
+  ctx.fillRect(cx - 2, bodyTop + 2, 4, 3);
+  ctx.fillStyle = TIE_HI;
+  ctx.fillRect(cx - 2, bodyTop + 2, 4, 1);
+  // cuerpo de la corbata
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx - 3, bodyTop + 5, 6, 14);
+  ctx.fillStyle = TIE;
+  ctx.fillRect(cx - 2, bodyTop + 5, 4, 13);
+  ctx.fillStyle = TIE_HI;
+  ctx.fillRect(cx - 2, bodyTop + 5, 1, 13);
+  // punta triangular
+  ctx.fillStyle = OUT;
+  ctx.beginPath();
+  ctx.moveTo(cx - 3, bodyTop + 18);
+  ctx.lineTo(cx, bodyTop + 22);
+  ctx.lineTo(cx + 3, bodyTop + 18);
+  ctx.fill();
+  ctx.fillStyle = TIE;
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, bodyTop + 18);
+  ctx.lineTo(cx, bodyTop + 21);
+  ctx.lineTo(cx + 2, bodyTop + 18);
+  ctx.fill();
 
-  // brazo delantero (más abajo, sobresale más)
-  ctx.fillStyle = '#1a1208';
-  ctx.fillRect(cx - 2, bodyTop + 11, 26, 7);
-  ctx.fillStyle = '#a8c8a0';
-  ctx.fillRect(cx - 1, bodyTop + 12, 24, 5);
-  // mano delantera con dedos crispados
-  ctx.fillStyle = '#a8c8a0';
-  ctx.fillRect(cx + 22, bodyTop + 9, 6, 12);
-  ctx.fillStyle = '#1a1208';
-  ctx.fillRect(cx + 28, bodyTop + 11, 2, 2);   // garras
-  ctx.fillRect(cx + 28, bodyTop + 14, 2, 2);
-  ctx.fillRect(cx + 28, bodyTop + 17, 2, 2);
-  // sombra del brazo
-  ctx.fillStyle = '#7a9a78';
-  ctx.fillRect(cx - 1, bodyTop + 16, 24, 1);
+  // ===== brazos al frente (mangas grises + manos piel) =====
+  // brazo trasero
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx + 4, bodyTop + 3, 16, 7);
+  ctx.fillStyle = SHIRT;
+  ctx.fillRect(cx + 5, bodyTop + 4, 14, 5);
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx + 19, bodyTop + 3, 5, 8);
+  ctx.fillStyle = SKIN;
+  ctx.fillRect(cx + 20, bodyTop + 4, 4, 6);
+  // brazo delantero
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx + 5, bodyTop + 11, 18, 7);
+  ctx.fillStyle = SHIRT;
+  ctx.fillRect(cx + 6, bodyTop + 12, 17, 5);
+  ctx.fillStyle = SHIRT_DARK;
+  ctx.fillRect(cx + 6, bodyTop + 16, 17, 1);
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx + 23, bodyTop + 11, 5, 9);
+  ctx.fillStyle = SKIN;
+  ctx.fillRect(cx + 24, bodyTop + 12, 4, 7);
 
   // ===== cabeza =====
-  // outline
-  ctx.fillStyle = '#1a1208';
+  ctx.fillStyle = OUT;
   ctx.beginPath();
   ctx.arc(cx + headLean, headY, headR + 1, 0, Math.PI * 2);
   ctx.fill();
-  // piel verde
-  ctx.fillStyle = '#a8c8a0';
+  ctx.fillStyle = SKIN;
   ctx.beginPath();
   ctx.arc(cx + headLean, headY, headR, 0, Math.PI * 2);
   ctx.fill();
-  // sombra inferior
-  ctx.fillStyle = '#7a9a78';
+  ctx.fillStyle = SKIN_DARK;
   ctx.beginPath();
-  ctx.ellipse(cx + headLean + 1, headY + 4, headR * 0.7, headR * 0.4, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + headLean + 1, headY + 5, headR * 0.7, headR * 0.4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // pelo despeinado (mechones tipo PvZ)
-  ctx.fillStyle = '#3a2010';
-  ctx.fillRect(cx + headLean - 9, headY - headR + 1, 3, 5);
-  ctx.fillRect(cx + headLean - 5, headY - headR - 2, 3, 7);
-  ctx.fillRect(cx + headLean - 1, headY - headR - 4, 3, 8);
-  ctx.fillRect(cx + headLean + 3, headY - headR - 2, 3, 6);
-  ctx.fillRect(cx + headLean + 7, headY - headR + 1, 3, 4);
+  // calvo con un mechón al medio (clásico PvZ)
+  ctx.fillStyle = HAIR;
+  ctx.fillRect(cx + headLean - 1, headY - headR - 4, 3, 6);
+  ctx.fillRect(cx + headLean + 2, headY - headR - 2, 2, 4);
+  ctx.fillRect(cx + headLean - 6, headY - headR + 1, 2, 3);
 
-  // ojos blancos (saltones)
+  // oreja
+  ctx.fillStyle = SKIN;
+  ctx.fillRect(cx + headLean + headR - 1, headY, 3, 4);
+  ctx.fillStyle = SKIN_DARK;
+  ctx.fillRect(cx + headLean + headR, headY + 1, 2, 2);
+
+  // ojos blancos saltones, pupilas oscuras (look bobo)
   ctx.fillStyle = '#fff';
-  ctx.fillRect(cx + headLean - 6, headY - 3, 4, 4);
-  ctx.fillRect(cx + headLean + 2, headY - 3, 4, 4);
-  ctx.fillStyle = '#1a1208';
-  ctx.fillRect(cx + headLean - 6, headY - 3, 4, 1);   // borde sombra
-  ctx.fillRect(cx + headLean + 2, headY - 3, 4, 1);
-  // pupilas rojas brillantes
-  ctx.fillStyle = '#cc1818';
+  ctx.fillRect(cx + headLean - 7, headY - 3, 5, 5);
+  ctx.fillRect(cx + headLean + 2, headY - 3, 5, 5);
+  ctx.fillStyle = OUT;
+  ctx.fillRect(cx + headLean - 7, headY - 3, 5, 1);
+  ctx.fillRect(cx + headLean + 2, headY - 3, 5, 1);
+  ctx.fillStyle = OUT;
   ctx.fillRect(cx + headLean - 5, headY - 1, 2, 2);
-  ctx.fillRect(cx + headLean + 3, headY - 1, 2, 2);
-  ctx.shadowBlur = 6;
-  ctx.shadowColor = '#ff3030';
-  ctx.fillStyle = '#ff5050';
+  ctx.fillRect(cx + headLean + 4, headY - 1, 2, 2);
+  ctx.fillStyle = '#fff';
   ctx.fillRect(cx + headLean - 5, headY - 1, 1, 1);
-  ctx.fillRect(cx + headLean + 3, headY - 1, 1, 1);
-  ctx.shadowBlur = 0;
-  // cejas en V (enojo)
-  ctx.fillStyle = '#1a1208';
-  ctx.fillRect(cx + headLean - 8, headY - 6, 5, 2);
-  ctx.fillRect(cx + headLean + 3, headY - 6, 5, 2);
-  ctx.fillRect(cx + headLean - 4, headY - 5, 2, 1);
-  ctx.fillRect(cx + headLean + 1, headY - 5, 2, 1);
+  ctx.fillRect(cx + headLean + 4, headY - 1, 1, 1);
+  // ojeras
+  ctx.fillStyle = SKIN_DARK;
+  ctx.fillRect(cx + headLean - 7, headY + 2, 5, 1);
+  ctx.fillRect(cx + headLean + 2, headY + 2, 5, 1);
+  // nariz
+  ctx.fillStyle = SKIN_DARK;
+  ctx.fillRect(cx + headLean - 1, headY + 1, 2, 3);
 
-  // ===== boca =====
+  // ===== boca: bobamente abierta con un diente sobresaliendo =====
   if (isEating) {
-    // mandíbula abierta masticando
     const chomp = Math.abs(Math.sin(time * 14)) * 4;
-    ctx.fillStyle = '#1a1208';
-    ctx.fillRect(cx + headLean - 6, headY + 3, 12, 5 + chomp);
-    // dientes torcidos
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(cx + headLean - 5, headY + 3, 2, 2);
-    ctx.fillRect(cx + headLean - 1, headY + 3, 2, 2);
-    ctx.fillRect(cx + headLean + 3, headY + 3, 2, 2);
-    ctx.fillRect(cx + headLean - 4, headY + 6 + chomp, 2, 2);
-    ctx.fillRect(cx + headLean + 2, headY + 6 + chomp, 2, 2);
+    ctx.fillStyle = OUT;
+    ctx.fillRect(cx + headLean - 6, headY + 5, 12, 5 + chomp);
+    ctx.fillStyle = '#fae8a8';
+    ctx.fillRect(cx + headLean - 5, headY + 5, 2, 3);
+    ctx.fillRect(cx + headLean + 3, headY + 5, 2, 3);
   } else {
-    // boca entreabierta con dientes
-    ctx.fillStyle = '#1a1208';
-    ctx.fillRect(cx + headLean - 5, headY + 4, 10, 3);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(cx + headLean - 4, headY + 4, 2, 2);
-    ctx.fillRect(cx + headLean - 1, headY + 4, 2, 2);
-    ctx.fillRect(cx + headLean + 2, headY + 4, 2, 2);
+    ctx.fillStyle = OUT;
+    ctx.fillRect(cx + headLean - 5, headY + 5, 10, 3);
+    // único diente sobresaliendo (clásico zombie tonto)
+    ctx.fillStyle = '#fae8a8';
+    ctx.fillRect(cx + headLean - 2, headY + 5, 2, 3);
   }
-  // baba verde
-  ctx.fillStyle = '#5a8030';
-  ctx.fillRect(cx + headLean + 3, headY + 8, 1, 4);
-  // sangre (puntito rojo en la mejilla)
-  ctx.fillStyle = '#cc1818';
-  ctx.fillRect(cx + headLean + 8, headY, 1, 2);
+  // labio inferior caído
+  ctx.fillStyle = SKIN_DARK;
+  ctx.fillRect(cx + headLean - 5, headY + 8, 10, 1);
 
   // ===== accesorios =====
   if (z.kind === 'cone') {
@@ -1078,22 +1119,45 @@ function drawZombieSprite(z) {
 
 // ==================== Anuncio de wave ====================
 function drawWaveAnnounce() {
-  if (state.waveAnnounce <= 0) return;
-  const a = clamp(state.waveAnnounce / 3, 0, 1);
-  const isHuge = state.wave % 5 === 0 && state.wave > 1;
-  ctx.save();
-  ctx.globalAlpha = a;
-  ctx.fillStyle = 'rgba(0,0,0,0.6)';
-  ctx.fillRect(0, ROWS * CELL_H * 0.35, canvas.width, 80);
-  ctx.font = `bold ${isHuge ? 38 : 32}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = isHuge ? '#ff5e7a' : '#9aff5e';
-  ctx.shadowBlur = 16;
-  ctx.shadowColor = isHuge ? '#ff5e7a' : '#9aff5e';
-  ctx.fillText(isHuge ? `¡HUGE WAVE ${state.wave}!` : `OLEADA ${state.wave}`, canvas.width / 2, ROWS * CELL_H * 0.35 + 40);
-  ctx.shadowBlur = 0;
-  ctx.restore();
+  // banner de oleada
+  if (state.waveAnnounce > 0) {
+    const a = clamp(state.waveAnnounce / 3, 0, 1);
+    const isHuge = state.wave % 5 === 0 && state.wave > 1;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, ROWS * CELL_H * 0.35, canvas.width, 80);
+    ctx.font = `bold ${isHuge ? 38 : 32}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isHuge ? '#ff5e7a' : '#9aff5e';
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = isHuge ? '#ff5e7a' : '#9aff5e';
+    ctx.fillText(isHuge ? `¡HUGE WAVE ${state.wave}!` : `OLEADA ${state.wave}`, canvas.width / 2, ROWS * CELL_H * 0.35 + 40);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // indicador "preparate" antes del primer zombie en wave 1
+  const noZombiesYet = state.wave === 1 && state.zombiesSpawned === 0 && state.spawnQueue.length > 0;
+  if (noZombiesYet) {
+    const next = state.spawnQueue[0];
+    const remaining = Math.max(0, next.delay - state.waveTimer);
+    if (remaining > 0) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(canvas.width / 2 - 140, 8, 280, 38);
+      ctx.fillStyle = '#5effb6';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`🌻 Preparate · ${Math.ceil(remaining)}s`, canvas.width / 2, 22);
+      ctx.font = '11px sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillText('Plantá girasoles primero, después peashooters', canvas.width / 2, 38);
+      ctx.restore();
+    }
+  }
 }
 
 // ==================== Audio ====================
