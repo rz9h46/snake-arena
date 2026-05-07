@@ -263,13 +263,18 @@ class TetrisBoard {
       if (this.flashTime <= 0) this.flashRows = [];
     }
     if (this.dropAnim > 0) this.dropAnim = Math.max(0, this.dropAnim - dt * 4);
-    const interval = isSoftDropping ? Math.min(0.05, this.gravityInterval()) : this.gravityInterval();
+    // soft drop = 6x más rápido que la gravedad normal, mínimo 0.10s
+    // (lo suficientemente lento para que se pueda soltar la tecla a media altura)
+    const interval = isSoftDropping
+      ? Math.max(0.10, this.gravityInterval() / 6)
+      : this.gravityInterval();
     this.gravityCounter += dt;
     while (this.gravityCounter >= interval) {
       this.gravityCounter -= interval;
       if (!this.alive) break;
       if (!this.collides(this.piece.x, this.piece.y + 1, this.piece.rot)) {
         this.piece.y++;
+        if (isSoftDropping) this.score += 1; // bonus por soft drop, estilo Tetris clásico
       } else {
         this.lockPiece();
         return 1;
