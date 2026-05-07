@@ -3,17 +3,17 @@
 // en la siguiente del orden. Llegar a la sandía = puntazo.
 
 const FRUITS = [
-  { ico: '🍒', name: 'Cherry',     r: 14, color: '#ff5e5e' },
-  { ico: '🍓', name: 'Strawberry', r: 19, color: '#ff5e9a' },
-  { ico: '🍇', name: 'Grape',      r: 25, color: '#9a5eff' },
-  { ico: '🍋', name: 'Lemon',      r: 32, color: '#ffe65e' },
-  { ico: '🍊', name: 'Orange',     r: 40, color: '#ffb35e' },
-  { ico: '🍎', name: 'Apple',      r: 48, color: '#ff5e7a' },
-  { ico: '🍐', name: 'Pear',       r: 56, color: '#9aff5e' },
-  { ico: '🍑', name: 'Peach',      r: 64, color: '#ffb89a' },
-  { ico: '🍍', name: 'Pineapple',  r: 72, color: '#ffd75e' },
-  { ico: '🍈', name: 'Melon',      r: 84, color: '#5effb6' },
-  { ico: '🍉', name: 'Watermelon', r: 96, color: '#5eff7a' }
+  { ico: '🍒', name: 'Cherry',     r: 14, color: '#7a1414', border: '#3a0808' },  // borgoña oscuro
+  { ico: '🍓', name: 'Strawberry', r: 19, color: '#ff3477', border: '#8a1840' },  // rosa-rojo bien pink
+  { ico: '🍇', name: 'Grape',      r: 25, color: '#7e3ec8', border: '#3a1058' },  // morado profundo
+  { ico: '🍋', name: 'Lemon',      r: 32, color: '#ffe61c', border: '#aa9008' },  // amarillo limón
+  { ico: '🍊', name: 'Orange',     r: 40, color: '#ff8c1a', border: '#a04808' },  // naranja puro
+  { ico: '🍎', name: 'Apple',      r: 48, color: '#dc143c', border: '#700818' },  // crimson clásico
+  { ico: '🍐', name: 'Pear',       r: 56, color: '#a4d639', border: '#4a6a18' },  // amarillo-verde
+  { ico: '🍑', name: 'Peach',      r: 64, color: '#ffb088', border: '#a05848' },  // durazno
+  { ico: '🍍', name: 'Pineapple',  r: 72, color: '#f4a800', border: '#8a4800' },  // dorado
+  { ico: '🍈', name: 'Melon',      r: 84, color: '#bee557', border: '#5a8030' },  // verde melón claro
+  { ico: '🍉', name: 'Watermelon', r: 96, color: '#ff5b76', border: '#7a2030' }   // rosa sandía
 ];
 // Solo se spawnean los 4 más chicos. El resto sale de fusiones.
 const SPAWN_LEVELS = [0, 0, 0, 1, 1, 2, 2, 3];
@@ -276,7 +276,7 @@ function drawFruit(x, y, level, alpha) {
   const r = def.r;
   ctx.globalAlpha = alpha;
   // sombra circular
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
   ctx.arc(x, y + 3, r, 0, Math.PI * 2);
   ctx.fill();
@@ -285,8 +285,14 @@ function drawFruit(x, y, level, alpha) {
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
+  // borde oscuro distintivo
+  ctx.strokeStyle = def.border;
+  ctx.lineWidth = Math.max(2, r * 0.08);
+  ctx.beginPath();
+  ctx.arc(x, y, r - 1, 0, Math.PI * 2);
+  ctx.stroke();
   // brillo
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
   ctx.beginPath();
   ctx.arc(x - r * 0.35, y - r * 0.35, r * 0.4, 0, Math.PI * 2);
   ctx.fill();
