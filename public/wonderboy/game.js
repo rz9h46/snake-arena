@@ -56,13 +56,18 @@ const state = {
   worldEnd: 0            // x mas lejano generado
 };
 
-const FRUIT_KINDS = [
-  { ico: '🍎', score: 50, vit: 8 },
-  { ico: '🍌', score: 50, vit: 8 },
-  { ico: '🍇', score: 80, vit: 10 },
-  { ico: '🍑', score: 100, vit: 14 },
-  { ico: '🍒', score: 30, vit: 5 }
-];
+// FRUIT_KINDS se define más abajo como FRUIT_LIST (con sprites)
+const FRUIT_KINDS_NAMES = ['apple', 'banana', 'grape', 'peach', 'cherry'];
+const FRUIT_DATA = {
+  apple:  { name: 'apple',  score: 50, vit: 8 },
+  banana: { name: 'banana', score: 50, vit: 8 },
+  grape:  { name: 'grape',  score: 80, vit: 10 },
+  peach:  { name: 'peach',  score: 100, vit: 14 },
+  cherry: { name: 'cherry', score: 30, vit: 5 }
+};
+function pickFruitKind() {
+  return FRUIT_DATA[FRUIT_KINDS_NAMES[randInt(0, FRUIT_KINDS_NAMES.length - 1)]];
+}
 const ENEMY_KINDS = [
   { ico: '🐌', name: 'snail',  speed: 30, jump: false },
   { ico: '🐝', name: 'bee',    speed: 70, jump: true, hover: true },
@@ -141,7 +146,7 @@ function generateAhead() {
         for (let k = 0; k < 3; k++) {
           state.fruits.push({
             x: baseX + k * 28, y: baseY,
-            kind: FRUIT_KINDS[randInt(0, FRUIT_KINDS.length - 1)],
+            kind: pickFruitKind(),
             taken: false
           });
         }
@@ -162,7 +167,7 @@ function spawnEnemyOnGround(x) {
 function spawnFruitFly(x) {
   state.fruits.push({
     x, y: floorY() - rand(40, 110),
-    kind: FRUIT_KINDS[randInt(0, FRUIT_KINDS.length - 1)],
+    kind: pickFruitKind(),
     taken: false
   });
 }
@@ -381,126 +386,532 @@ function gameOver() {
   beep('over');
 }
 
+// ==================== Pixel art helpers ====================
+const PIX = 3;  // tamaño base de cada "pixel" del sprite
+
+function drawSprite(sprite, palette, x, y, scale = PIX, flipX = false) {
+  // sprite: array de strings, palette: { 'k': '#000', ... }
+  for (let row = 0; row < sprite.length; row++) {
+    const line = sprite[row];
+    for (let col = 0; col < line.length; col++) {
+      const c = line[col];
+      const color = palette[c];
+      if (!color) continue;
+      const px = flipX ? (line.length - 1 - col) : col;
+      ctx.fillStyle = color;
+      ctx.fillRect(x + px * scale, y + row * scale, scale, scale);
+    }
+  }
+}
+
+// Paleta del héroe estilo Wonder Boy / Tom Tom
+const HERO_PAL = {
+  '.': null,
+  'k': '#1a1208',     // outline
+  'h': '#5a2010',     // pelo oscuro
+  'H': '#c46818',     // pelo
+  'r': '#8a1818',     // rojo oscuro (banda/short)
+  'R': '#ee2828',     // rojo brillante
+  's': '#fdc89a',     // piel clara
+  'S': '#d68850',     // piel sombra
+  'g': '#1a6010',     // verde oscuro
+  'G': '#3aa028',     // verde
+  'b': '#2030a0',     // azul oscuro
+  'B': '#3868d8',     // azul brillante
+  'y': '#fcd820',     // amarillo (taparrabos detalle)
+  'w': '#ffffff'
+};
+
+// Hero corriendo - frame A (pierna izquierda adelante)
+const HERO_RUN_A = [
+  "....kkkkkkk....",
+  "...kHHHHHHHk...",
+  "..kHHHHHHHHHk..",
+  "..kHrrrrrrrHk..",
+  "..kHrRRRRRrHk..",
+  "..kssssssskk...",
+  "..ksksskssk....",   // ojos
+  "..ksssssssk....",
+  "...ksksskk.....",   // boca
+  "....ksssk......",
+  "....rRRRRr.....",
+  "...rRRRRRRr....",
+  "..srRRRRRRrs...",   // hombros con brazos
+  "..srRRyRRRrs...",   // pecho
+  "..srRRyRRRrs...",
+  "...rRRyRRr.....",
+  "....bbbbb......",   // shorts
+  "...bBBBBBb.....",
+  "...bBBBBBb.....",
+  "...sss.sss.....",   // piernas
+  "...kss.ssk.....",
+  "..kkk....kkk...",   // pies
+];
+
+// Hero corriendo - frame B (pierna derecha adelante)
+const HERO_RUN_B = [
+  "....kkkkkkk....",
+  "...kHHHHHHHk...",
+  "..kHHHHHHHHHk..",
+  "..kHrrrrrrrHk..",
+  "..kHrRRRRRrHk..",
+  "..kssssssskk...",
+  "..ksksskssk....",
+  "..ksssssssk....",
+  "...kssksskk....",
+  "....ksssk......",
+  "....rRRRRr.....",
+  "...rRRRRRRr....",
+  "..srRRRRRRrs...",
+  "..srRRyRRRrs...",
+  "..srRRyRRRrs...",
+  "...rRRyRRr.....",
+  "....bbbbb......",
+  "...bBBBBBb.....",
+  "...bBBBBBb.....",
+  "...ss...sss....",
+  "...kss..ssk....",
+  ".kkk......kkk..",
+];
+
+const HERO_JUMP = [
+  "....kkkkkkk....",
+  "...kHHHHHHHk...",
+  "..kHHHHHHHHHk..",
+  "..kHrrrrrrrHk..",
+  "..kHrRRRRRrHk..",
+  "..kssssssskk...",
+  "..ksksskssk....",
+  "..ksssssssk....",
+  "...ksksskk.....",
+  "...sssssssss...",   // brazos extendidos
+  "..srRRRRRRRrs..",
+  "..srRRRRRRRRs..",
+  "..srRRRyRRRrs..",
+  "..srRRRyRRRrs..",
+  "...rRRRyRRr....",
+  "....bbbbbb.....",
+  "...bBBBBBBb....",
+  "...bBBBBBBb....",
+  "....sssss......",
+  "....kssk.......",
+  "...kkk.........",
+  "...............",
+];
+
+const HERO_ATTACK = [
+  "....kkkkkkk....",
+  "...kHHHHHHHk...",
+  "..kHHHHHHHHHk..",
+  "..kHrrrrrrrHk..",
+  "..kHrRRRRRrHk..",
+  "..kssssssskk...",
+  "..ksksskssk....",
+  "..ksssssssk....",
+  "...kssksskk....",
+  "....ksssk......",
+  "....rRRRRr.swww",  // brazo extendido + arma
+  "...rRRRRRRrwww.",
+  "..srRRRRRRsww..",
+  "..srRRyRRRrs...",
+  "..srRRyRRRrs...",
+  "...rRRyRRr.....",
+  "....bbbbb......",
+  "...bBBBBBb.....",
+  "...bBBBBBb.....",
+  "...sss.sss.....",
+  "...kss.ssk.....",
+  "..kkk....kkk...",
+];
+
+// ==================== Sprites de enemigos ====================
+const ENEMY_PALETTES = {
+  snail: { '.': null, 'k': '#1a1208', 'p': '#7a3a8a', 'P': '#b85ec8', 'y': '#fcd820', 'g': '#5a8030' },
+  bee:   { '.': null, 'k': '#1a1208', 'y': '#fcd820', 'Y': '#fff860', 'w': '#ffffff', 'b': '#2030a0' },
+  scorp: { '.': null, 'k': '#1a1208', 'r': '#8a1818', 'R': '#cc3030', 'y': '#fcd820' },
+  crab:  { '.': null, 'k': '#1a1208', 'o': '#cc4818', 'O': '#ff8838', 'y': '#fcd820' }
+};
+
+const SNAIL_A = [
+  "...........",
+  "...kkk.....",
+  "..kPPk.....",
+  "..kPPk.....",
+  "..kkk......",
+  "kkkkkkkkk..",
+  "kPPPPPPPk..",
+  "kPpppppPk..",
+  "kPpgggpPk..",
+  "kPpgggpPk..",
+  "kPppppPk...",
+  ".kkkkkk....",
+];
+
+const SNAIL_B = [
+  "...........",
+  "....kkk....",
+  "...kPPk....",
+  "...kPPk....",
+  "...kkk.....",
+  ".kkkkkkkkk.",
+  ".kPPPPPPPk.",
+  ".kPpppppPk.",
+  ".kPpgggpPk.",
+  ".kPpgggpPk.",
+  ".kPppppPk..",
+  "..kkkkkk...",
+];
+
+const BEE_A = [
+  "...kkkk....",
+  "..kyyyyk...",
+  ".kywwywwk..",
+  "kyykyykyk..",  // ojos
+  "kyyyyyyyk..",
+  "kkkkkkkk...",
+  ".kbbbbk....",
+  ".kkkkk.....",
+  "...kk......",
+];
+
+const BEE_B = [
+  "...kkkk....",
+  "..kyyyyk...",
+  ".kywwywwk..",
+  "kyykyykyk..",
+  "kyyyyyyyk..",
+  "kkkkkkkk...",
+  ".kybybyk...",
+  "..kkkk.....",
+  "...kk......",
+];
+
+const SCORP = [
+  "...........",
+  "..k.....k..",
+  ".kk.....kk.",
+  "kkk.....kkk",
+  "kRrkkkkkrRk",
+  "kRRRRRRRRRk",
+  "kRrrkrrkrRk",
+  "kRRkRRRkRRk",
+  "kkk.kkk.kkk",
+  "k.k.....k.k",
+  "k.k.....k.k",
+];
+
+const CRAB = [
+  "...........",
+  "...........",
+  "kk.......kk",
+  "kOk.....kOk",
+  "kOOOOOOOOOk",
+  "kOoooooooOk",
+  "kOoyooooyOk",  // ojos amarillos
+  "kOoooooooOk",
+  "kOOOOOOOOOk",
+  "kk.k.k.k.kk",
+  ".k.k.k.k.k.",
+];
+
+// Frutas pixeladas
+const FRUIT_PALS = {
+  apple:  { '.': null, 'k': '#1a1208', 'r': '#8a1818', 'R': '#ee2828', 'g': '#1a6010', 'G': '#3aa028', 'w': '#ffffff' },
+  banana: { '.': null, 'k': '#1a1208', 'y': '#cc8810', 'Y': '#fcd820', 'g': '#1a6010' },
+  grape:  { '.': null, 'k': '#1a1208', 'p': '#5a2080', 'P': '#9450c8', 'g': '#1a6010' },
+  peach:  { '.': null, 'k': '#1a1208', 'p': '#cc6868', 'P': '#ff9090', 'g': '#1a6010', 'G': '#3aa028' },
+  cherry: { '.': null, 'k': '#1a1208', 'r': '#8a1818', 'R': '#ee2828', 'g': '#5a3010' }
+};
+const FRUIT_SPRITES = {
+  apple: [
+    "....g....",
+    "....G....",
+    "..kkkkk..",
+    ".kRRRRRk.",
+    "kRRRwRRRk",
+    "kRRRRRRRk",
+    "kRRrrRRRk",
+    ".kRrrRRk.",
+    "..kkkkk..",
+  ],
+  banana: [
+    "...kkk...",
+    "..kYYYk..",
+    "..kYYYk..",
+    ".kYYYY.k.",
+    ".kyYYYy.k",
+    ".kyyyyyk.",
+    "..kkkkk..",
+  ],
+  grape: [
+    "....g....",
+    "...kPk...",
+    "..kPPPk..",
+    ".kPpPpPk.",
+    "kPpPpPpPk",
+    ".kPpPpk..",
+    "..kPpk...",
+    "...kk....",
+  ],
+  peach: [
+    "...G.....",
+    "..g......",
+    ".kkkkk...",
+    "kPPPPPk..",
+    "kPpppPk..",
+    "kPppPPk..",
+    ".kPPPk...",
+    "..kkk....",
+  ],
+  cherry: [
+    "....g.g..",
+    "...gg.g..",
+    "..gkk.g..",
+    ".kRRkkk..",
+    "kRRRkRRk.",
+    "kRrRkRRk.",
+    ".kkkkRk..",
+    "...kkkk..",
+  ]
+};
+
+// ==================== Fondo tropical ====================
+const palmTrees = [];
+for (let i = 0; i < 10; i++) palmTrees.push({ x: rand(0, 4000), s: rand(0.7, 1.2), layer: rand() > 0.5 ? 1 : 2 });
+function rand() { return Math.random(); }
+
+const PALM_PAL = {
+  '.': null,
+  'k': '#1a1208',
+  't': '#3a2010',
+  'T': '#5a3010',
+  'g': '#1a6010',
+  'G': '#3aa028'
+};
+const PALM_SPRITE = [
+  "....GGGGGGGGGGG....",
+  "..GGggggggggggGG..",
+  "GggggGGGGGGGGggggG",
+  "GgggGGttttttGGgggG",
+  ".GGgttTTTTTTtttGG.",
+  "...GttTTTTTTtg....",
+  "....ttTTTTTTtt....",
+  "....tttTTtttt.....",
+  "....TTttttTT......",
+  ".....tTTtt........",
+  ".....tTTtt........",
+  ".....tTTTt........",
+  ".....TTTTt........",
+  ".....tTTTT........",
+  ".....TTTTt........",
+  ".....tTTTt........",
+  ".....TTTTt........",
+];
+
 // ==================== Render ====================
 function render() {
-  // cielo (gradient ya en CSS, pero limpiar canvas)
   ctx.clearRect(0, 0, viewport.w, viewport.h);
+  drawSky();
+  drawSun();
+  drawMountainsParallax();
+  drawPalmsParallax();
+  drawTerrain();
+  drawFruits();
+  drawEnemies();
+  drawPlayer();
+  drawParticles();
+}
 
-  // parallax montañas detrás
-  drawMountains();
-  drawClouds();
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, viewport.h);
+  grad.addColorStop(0, '#ffb060');
+  grad.addColorStop(0.4, '#ff8c64');
+  grad.addColorStop(0.7, '#5ecdd8');
+  grad.addColorStop(1, '#3a8aa0');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, viewport.w, viewport.h * FLOOR_Y_RATIO);
+}
 
-  // suelo verde
+function drawSun() {
+  const t = performance.now() * 0.0005;
+  const cx = viewport.w * 0.78;
+  const cy = viewport.h * 0.22;
+  const r = Math.min(viewport.w, viewport.h) * 0.13;
+  // halo
+  const halo = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 2);
+  halo.addColorStop(0, 'rgba(255, 240, 120, 0.5)');
+  halo.addColorStop(1, 'rgba(255, 240, 120, 0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(cx - r * 2, cy - r * 2, r * 4, r * 4);
+  // sol con bandas (estilo retro)
+  ctx.fillStyle = '#ffd820';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffaa20';
+  for (let i = 0; i < 4; i++) {
+    const y = cy + r * 0.2 + i * (r * 0.18);
+    ctx.fillRect(cx - r * 0.95 + Math.abs(y - cy) * 0.1, y, r * 1.9 - Math.abs(y - cy) * 0.2, 4);
+  }
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.beginPath();
+  ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawMountainsParallax() {
+  ctx.fillStyle = 'rgba(122, 80, 110, 0.55)';
+  const peaks = 5;
+  const off = (state.scrollX * 0.15) % (viewport.w / peaks * 2);
+  ctx.beginPath();
+  ctx.moveTo(-100, viewport.h * FLOOR_Y_RATIO);
+  for (let i = -1; i <= peaks + 1; i++) {
+    const x = (i / peaks) * viewport.w * 1.6 - off;
+    ctx.lineTo(x, viewport.h * 0.45);
+    ctx.lineTo(x + viewport.w / peaks / 2, viewport.h * 0.32);
+  }
+  ctx.lineTo(viewport.w + 200, viewport.h * FLOOR_Y_RATIO);
+  ctx.fill();
+  // capa más cercana, más opaca y verde
+  ctx.fillStyle = 'rgba(40, 90, 60, 0.7)';
+  const peaks2 = 7;
+  const off2 = (state.scrollX * 0.35) % (viewport.w / peaks2 * 2);
+  ctx.beginPath();
+  ctx.moveTo(-100, viewport.h * FLOOR_Y_RATIO);
+  for (let i = -1; i <= peaks2 + 1; i++) {
+    const x = (i / peaks2) * viewport.w * 1.4 - off2;
+    ctx.lineTo(x, viewport.h * 0.6);
+    ctx.lineTo(x + viewport.w / peaks2 / 2, viewport.h * 0.5);
+  }
+  ctx.lineTo(viewport.w + 200, viewport.h * FLOOR_Y_RATIO);
+  ctx.fill();
+}
+
+function drawPalmsParallax() {
+  const palmW = PALM_SPRITE[0].length * 4;
+  const totalW = viewport.w * 1.5;
+  for (const palm of palmTrees) {
+    const speed = palm.layer === 1 ? 0.4 : 0.7;
+    const sx = ((palm.x - state.scrollX * speed) % totalW + totalW) % totalW - palmW;
+    if (sx < -palmW || sx > viewport.w + palmW) continue;
+    const sy = viewport.h * FLOOR_Y_RATIO - PALM_SPRITE.length * 4 * palm.s + 8;
+    drawSprite(PALM_SPRITE, PALM_PAL, sx, sy, 4 * palm.s);
+  }
+}
+
+function drawTerrain() {
   const fy = floorY();
-  // dibujar tramos de suelo
-  ctx.fillStyle = '#2a7a3a';
+  // suelo principal
+  const groundGrad = ctx.createLinearGradient(0, fy, 0, viewport.h);
+  groundGrad.addColorStop(0, '#5a8030');
+  groundGrad.addColorStop(0.3, '#3a5a20');
+  groundGrad.addColorStop(1, '#2a3a18');
   for (const [a, b] of state.ground) {
     const x1 = a - state.scrollX;
     const x2 = b - state.scrollX;
     if (x2 < -20 || x1 > viewport.w + 20) continue;
+    ctx.fillStyle = groundGrad;
     ctx.fillRect(x1, fy, x2 - x1, viewport.h - fy);
-    // tope de pasto
-    ctx.fillStyle = '#5effb6';
-    ctx.fillRect(x1, fy - 4, x2 - x1, 4);
-    ctx.fillStyle = '#2a7a3a';
+    // tope de pasto: bandas pixeladas
+    ctx.fillStyle = '#7ac030';
+    ctx.fillRect(x1, fy - 6, x2 - x1, 6);
+    ctx.fillStyle = '#ade050';
+    ctx.fillRect(x1, fy - 6, x2 - x1, 2);
+    // tufos de pasto
+    for (let gx = x1; gx < x2; gx += 28) {
+      const gxw = gx + (state.scrollX * 0.0001 % 1) * 20;
+      ctx.fillStyle = '#7ac030';
+      ctx.fillRect(gxw + 4, fy - 10, 2, 4);
+      ctx.fillRect(gxw + 6, fy - 8, 2, 2);
+      ctx.fillRect(gxw + 8, fy - 10, 2, 4);
+    }
+    // piedras
+    ctx.fillStyle = '#3a3a3a';
+    for (let i = 0; i < 3; i++) {
+      const rx = x1 + ((i * 80 + Math.floor(a / 50)) % (x2 - x1));
+      if (rx > x1 + 20 && rx < x2 - 20) {
+        ctx.fillRect(rx, fy + 12 + (i * 4), 8, 4);
+        ctx.fillStyle = '#5a5a5a';
+        ctx.fillRect(rx + 1, fy + 12 + (i * 4), 4, 2);
+        ctx.fillStyle = '#3a3a3a';
+      }
+    }
   }
-  // pozos: dibujar fondo profundo
-  ctx.fillStyle = '#0a0d18';
+  // pozos
   for (const [a, b] of state.pits) {
     const x1 = a - state.scrollX;
     const x2 = b - state.scrollX;
     if (x2 < -20 || x1 > viewport.w + 20) continue;
+    // gradiente oscuro hacia abajo
+    const pitGrad = ctx.createLinearGradient(0, fy, 0, viewport.h);
+    pitGrad.addColorStop(0, '#1a0a08');
+    pitGrad.addColorStop(1, '#000000');
+    ctx.fillStyle = pitGrad;
     ctx.fillRect(x1, fy, x2 - x1, viewport.h - fy);
-    // borde de tierra
-    ctx.fillStyle = '#5a3a1a';
-    ctx.fillRect(x1, fy, 4, 16);
-    ctx.fillRect(x2 - 4, fy, 4, 16);
-    ctx.fillStyle = '#0a0d18';
+    // bordes de tierra rocosa
+    ctx.fillStyle = '#5a3018';
+    ctx.fillRect(x1, fy, 6, 16);
+    ctx.fillRect(x2 - 6, fy, 6, 16);
+    ctx.fillStyle = '#7a4828';
+    ctx.fillRect(x1, fy, 6, 4);
+    ctx.fillRect(x2 - 6, fy, 6, 4);
   }
+}
 
-  // frutas
-  ctx.font = '28px serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+function drawFruits() {
   for (const f of state.fruits) {
     if (f.taken) continue;
     const fx = f.x - state.scrollX;
-    if (fx < -30 || fx > viewport.w + 30) continue;
+    if (fx < -40 || fx > viewport.w + 40) continue;
     const bob = Math.sin(performance.now() * 0.005 + f.x * 0.02) * 4;
-    ctx.fillText(f.kind.ico, fx, f.y + bob);
+    const sprite = FRUIT_SPRITES[f.kind.name];
+    const pal = FRUIT_PALS[f.kind.name];
+    if (sprite && pal) {
+      const w = sprite[0].length * 4, h = sprite.length * 4;
+      drawSprite(sprite, pal, fx - w / 2, f.y + bob - h / 2, 4);
+    }
   }
+}
 
-  // enemigos
+function drawEnemies() {
+  const t = performance.now() * 0.006;
+  const fy = floorY();
   for (const e of state.enemies) {
     if (!e.alive) continue;
     const ex = e.x - state.scrollX;
     if (ex < -40 || ex > viewport.w + 40) continue;
     // sombra
     if (!e.kind.hover) {
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
       ctx.beginPath();
-      ctx.ellipse(ex, fy - 2, 22, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(ex, fy - 1, 22, 5, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.font = '34px serif';
-    ctx.fillStyle = '#000';
-    ctx.fillText(e.kind.ico, ex, e.y);
-  }
-
-  // jugador
-  drawPlayer();
-
-  // partículas
-  for (const pt of state.particles) {
-    ctx.globalAlpha = clamp(pt.life * 1.5, 0, 1);
-    ctx.fillStyle = pt.color;
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-}
-
-function drawMountains() {
-  // 2 capas de parallax
-  const layers = [
-    { speed: 0.2, color: '#3a5a7a', base: 0.5, peaks: 5, h: 0.32 },
-    { speed: 0.45, color: '#2a4a6a', base: 0.62, peaks: 7, h: 0.22 }
-  ];
-  for (const L of layers) {
-    ctx.fillStyle = L.color;
-    ctx.beginPath();
-    ctx.moveTo(0, viewport.h);
-    const off = (state.scrollX * L.speed) % (viewport.w / L.peaks * 2);
-    const baseY = viewport.h * L.base;
-    for (let i = -1; i <= L.peaks + 1; i++) {
-      const x = (i / L.peaks) * viewport.w - off;
-      const peakY = baseY - viewport.h * L.h;
-      const valleyY = baseY;
-      ctx.lineTo(x, valleyY);
-      ctx.lineTo(x + viewport.w / L.peaks / 2, peakY);
+    let sprite, pal, scale = 3;
+    const animTick = Math.floor(t + e.x * 0.01) % 2;
+    switch (e.kind.name) {
+      case 'snail':
+        sprite = animTick ? SNAIL_A : SNAIL_B;
+        pal = ENEMY_PALETTES.snail;
+        break;
+      case 'bee':
+        sprite = animTick ? BEE_A : BEE_B;
+        pal = ENEMY_PALETTES.bee;
+        scale = 3;
+        break;
+      case 'scorp':
+        sprite = SCORP;
+        pal = ENEMY_PALETTES.scorp;
+        break;
+      case 'crab':
+        sprite = CRAB;
+        pal = ENEMY_PALETTES.crab;
+        break;
     }
-    ctx.lineTo(viewport.w + 100, viewport.h);
-    ctx.lineTo(0, viewport.h);
-    ctx.closePath();
-    ctx.fill();
-  }
-}
-
-const cloudPositions = [];
-for (let i = 0; i < 8; i++) cloudPositions.push({ x: rand(0, 4000), y: rand(40, 200), s: rand(0.7, 1.3) });
-function drawClouds() {
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  for (const c of cloudPositions) {
-    const x = ((c.x - state.scrollX * 0.1) % (viewport.w + 200) + (viewport.w + 200)) % (viewport.w + 200) - 100;
-    const y = c.y;
-    const r = 18 * c.s;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.arc(x + r, y - r * 0.3, r * 0.85, 0, Math.PI * 2);
-    ctx.arc(x + r * 2, y, r, 0, Math.PI * 2);
-    ctx.arc(x + r * 1.5, y + r * 0.4, r * 0.7, 0, Math.PI * 2);
-    ctx.fill();
+    if (sprite) {
+      const w = sprite[0].length * scale, h = sprite.length * scale;
+      drawSprite(sprite, pal, ex - w / 2, e.y - h / 2, scale, true);
+    }
   }
 }
 
@@ -510,50 +921,32 @@ function drawPlayer() {
   if (blink) return;
   // sombra
   if (p.onGround) {
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(p.x, floorY() - 2, 18, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(p.x, floorY() - 2, 16, 4, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  // cuerpo
-  const bodyColor = '#ffb35e';
-  const skinColor = '#ffd6a8';
-  const hairColor = '#5e3a1a';
-  // pies (animados)
-  const t = performance.now() * 0.018;
-  const stride = p.onGround ? Math.sin(t * (state.speed / 100)) * 6 : 0;
-  ctx.fillStyle = '#3a2a1a';
-  ctx.fillRect(p.x - 8 + stride, p.y + 14, 6, 6);
-  ctx.fillRect(p.x + 2 - stride, p.y + 14, 6, 6);
-  // cuerpo principal
-  ctx.fillStyle = bodyColor;
-  ctx.fillRect(p.x - 9, p.y - 6, 18, 22);
-  // brazo
-  ctx.fillStyle = skinColor;
-  const armSwing = p.attackTimer > 0 ? 12 : Math.sin(t * (state.speed / 100)) * 4;
-  ctx.fillRect(p.x + 6 + armSwing, p.y - 2, 6, 12);
-  // arma si está atacando
+  // elegir sprite
+  let sprite;
   if (p.attackTimer > 0) {
-    ctx.fillStyle = '#aaa';
-    ctx.fillRect(p.x + 14, p.y - 6, 24, 4);
-    ctx.fillStyle = '#ffd75e';
-    ctx.fillRect(p.x + 36, p.y - 8, 4, 8);
+    sprite = HERO_ATTACK;
+  } else if (!p.onGround) {
+    sprite = HERO_JUMP;
+  } else {
+    const tick = Math.floor(performance.now() * 0.012 * (state.speed / RUN_SPEED)) % 2;
+    sprite = tick ? HERO_RUN_A : HERO_RUN_B;
   }
-  // cabeza
-  ctx.fillStyle = skinColor;
-  ctx.beginPath();
-  ctx.arc(p.x, p.y - 12, 9, 0, Math.PI * 2);
-  ctx.fill();
-  // pelo
-  ctx.fillStyle = hairColor;
-  ctx.fillRect(p.x - 9, p.y - 20, 18, 6);
-  ctx.beginPath();
-  ctx.arc(p.x, p.y - 20, 9, Math.PI, Math.PI * 2);
-  ctx.fill();
-  // ojos
-  ctx.fillStyle = '#000';
-  ctx.fillRect(p.x + 3, p.y - 13, 2, 2);
-  ctx.fillRect(p.x - 1, p.y - 13, 2, 2);
+  const w = sprite[0].length * PIX, h = sprite.length * PIX;
+  drawSprite(sprite, HERO_PAL, p.x - w / 2, p.y - h / 2 - 6, PIX);
+}
+
+function drawParticles() {
+  for (const pt of state.particles) {
+    ctx.globalAlpha = clamp(pt.life * 1.5, 0, 1);
+    ctx.fillStyle = pt.color;
+    ctx.fillRect(pt.x - pt.size, pt.y - pt.size, pt.size * 2, pt.size * 2);
+  }
+  ctx.globalAlpha = 1;
 }
 
 // ==================== Audio ====================

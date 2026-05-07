@@ -85,10 +85,13 @@ html, body {
   left: 0; right: 0; bottom: 0;
   width: 100%;
   height: calc(100vh - 56px);
-  background: linear-gradient(180deg, #4a6fa5 0%, #6ba3d8 50%, #98c5e8 100%);
+  background: #ff8c64;
   display: block;
   cursor: pointer;
   touch-action: manipulation;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 #touch-controls {
