@@ -75,6 +75,7 @@ function newCustomer() {
   };
   state.taco = [];
   clearTaco3D();
+  spawnShell();           // 🌮 la fajita aparece con drop-in cuando llega el cliente
   renderCustomer(true);
   renderTaco();
   renderIngredients();
@@ -147,6 +148,7 @@ function serve() {
     flashFeedback(`+${points}  ${state.combo > 2 ? '🔥×' + (state.combo - 1) + '!' : '😋 Bueno!'}`, '#5fbb40');
     beep('happy');
     setHappyFace();
+    flyAwayTaco();          // ✨ taco vuela con chispas hacia el cliente
     // sube nivel cada 5 servidos
     if (state.served % 5 === 0) state.level++;
   } else {
@@ -273,12 +275,83 @@ function init3D() {
   plateRim.position.y = -1.12;
   scene3d.add(plateRim);
 
-  // Taco shell
-  tacoShellMesh = buildTacoShell();
-  scene3d.add(tacoShellMesh);
+  // El shell aparece cuando llega cada cliente (spawnShell)
 
   window.addEventListener('resize', resize3D);
   resize3D();
+}
+
+// Lista de objetos en animación de salida (fly-away al servir)
+const flyingItems = [];
+// Chispas al servir
+const sparkles = [];
+
+function spawnShell() {
+  if (!scene3d) return;
+  // si quedó uno por error, removerlo
+  if (tacoShellMesh) {
+    scene3d.remove(tacoShellMesh);
+    disposeMesh(tacoShellMesh);
+    tacoShellMesh = null;
+  }
+  tacoShellMesh = buildTacoShell();
+  tacoShellMesh.position.y = 3.5;            // empieza arriba
+  tacoShellMesh.userData.dropping = true;
+  tacoShellMesh.userData.targetY = -0.55;
+  tacoShellMesh.userData.vy = 0;
+  scene3d.add(tacoShellMesh);
+  // pulso de luz cuando aterriza? lo dejamos solo el bounce
+}
+
+function flyAwayTaco() {
+  if (!scene3d) return;
+  // chispas en la posición del shell
+  spawnSparkles(0, -0.1, 0);
+  // empezar fly-away del shell + ingredientes
+  const items = [];
+  if (tacoShellMesh) items.push(tacoShellMesh);
+  for (const m of ingredientMeshes.values()) items.push(m);
+  for (const m of items) {
+    m.userData.flying = true;
+    m.userData.flyT = 0;
+    m.userData.flyDur = 0.75;
+    m.userData.startX = m.position.x;
+    m.userData.startY = m.position.y;
+    m.userData.startZ = m.position.z;
+    m.userData.flyDir = 1; // a la derecha
+    m.userData.flySpinX = (Math.random() - 0.5) * 8;
+    m.userData.flySpinY = (Math.random() - 0.5) * 6;
+    m.userData.flySpinZ = 4 + Math.random() * 4;
+    flyingItems.push(m);
+  }
+  tacoShellMesh = null;
+  ingredientMeshes.clear();
+}
+
+function spawnSparkles(cx, cy, cz) {
+  if (!scene3d) return;
+  const colors = [0xffd75e, 0xfff5a8, 0xffb35e, 0xff5e7a];
+  for (let i = 0; i < 26; i++) {
+    const m = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05 + Math.random() * 0.05, 6, 5),
+      new THREE.MeshBasicMaterial({
+        color: colors[Math.floor(Math.random() * colors.length)],
+        transparent: true,
+        opacity: 1
+      })
+    );
+    m.position.set(cx + (Math.random() - 0.5) * 0.6, cy, cz + (Math.random() - 0.5) * 0.6);
+    const ang = Math.random() * Math.PI * 2;
+    const elev = Math.random() * Math.PI * 0.6 + 0.2;  // hacia arriba
+    const speed = 3 + Math.random() * 3;
+    m.userData.vx = Math.cos(ang) * Math.cos(elev) * speed;
+    m.userData.vy = Math.sin(elev) * speed + 1.5;
+    m.userData.vz = Math.sin(ang) * Math.cos(elev) * speed;
+    m.userData.life = 0.7 + Math.random() * 0.3;
+    m.userData.maxLife = m.userData.life;
+    sparkles.push(m);
+    scene3d.add(m);
+  }
 }
 
 function resize3D() {
@@ -511,9 +584,30 @@ function disposeMesh(g) {
 
 function update3D(dt) {
   if (!scene3d) return;
-  // rotación del shell muy sutil
-  if (tacoShellMesh) tacoShellMesh.rotation.y = Math.sin(performance.now() * 0.0006) * 0.04;
-  // dropping
+  // rotación sutil del shell mientras está quieto
+  if (tacoShellMesh && !tacoShellMesh.userData.dropping) {
+    tacoShellMesh.rotation.y = Math.sin(performance.now() * 0.0006) * 0.04;
+  }
+
+  // drop-in del shell
+  if (tacoShellMesh && tacoShellMesh.userData.dropping) {
+    const m = tacoShellMesh;
+    m.userData.vy = (m.userData.vy || 0) - 18 * dt;
+    m.position.y += m.userData.vy * dt;
+    m.rotation.y += dt * 1.2;
+    if (m.position.y <= m.userData.targetY) {
+      m.position.y = m.userData.targetY;
+      if (Math.abs(m.userData.vy) < 1.5) {
+        m.userData.dropping = false;
+        m.userData.vy = 0;
+        m.rotation.y = 0;
+      } else {
+        m.userData.vy = -m.userData.vy * 0.4;
+      }
+    }
+  }
+
+  // dropping de ingredientes
   for (const [, mesh] of ingredientMeshes) {
     if (mesh.userData.dropping) {
       const dy = (mesh.userData.targetY - mesh.position.y);
@@ -526,27 +620,66 @@ function update3D(dt) {
           mesh.userData.dropping = false;
           mesh.userData.vy = 0;
         } else {
-          mesh.userData.vy = -mesh.userData.vy * 0.35; // rebote
+          mesh.userData.vy = -mesh.userData.vy * 0.35;
         }
       }
     }
   }
-  // remoción
+
+  // remoción individual de ingredientes (al sacar uno equivocado)
   for (let i = meshPool.length - 1; i >= 0; i--) {
     const m = meshPool[i];
     m.userData.life -= dt;
     m.position.y += (m.userData.vy || 4) * dt;
     m.userData.vy = (m.userData.vy || 4) - 18 * dt;
-    if (m.userData.spinAxis) {
-      m.rotateOnAxis(m.userData.spinAxis, dt * 8);
-    } else {
-      m.rotation.y += dt * 6;
-      m.rotation.x += dt * 4;
-    }
+    if (m.userData.spinAxis) m.rotateOnAxis(m.userData.spinAxis, dt * 8);
+    else { m.rotation.y += dt * 6; m.rotation.x += dt * 4; }
     if (m.userData.life <= 0) {
       scene3d.remove(m);
       disposeMesh(m);
       meshPool.splice(i, 1);
+    }
+  }
+
+  // fly-away del taco completo (al servir bien)
+  for (let i = flyingItems.length - 1; i >= 0; i--) {
+    const m = flyingItems[i];
+    m.userData.flyT += dt;
+    const t = m.userData.flyT / m.userData.flyDur;
+    if (t >= 1) {
+      scene3d.remove(m);
+      disposeMesh(m);
+      flyingItems.splice(i, 1);
+      continue;
+    }
+    // arco hacia la derecha y arriba, después cae afuera de pantalla
+    m.position.x = m.userData.startX + m.userData.flyDir * t * 9;
+    m.position.y = m.userData.startY + Math.sin(t * Math.PI * 0.85) * 2.2 - t * 1.5;
+    m.position.z = m.userData.startZ;
+    m.rotation.x += m.userData.flySpinX * dt;
+    m.rotation.y += m.userData.flySpinY * dt;
+    m.rotation.z += m.userData.flySpinZ * dt;
+    const scale = Math.max(0.2, 1 - t * 0.5);
+    m.scale.set(scale, scale, scale);
+  }
+
+  // chispas
+  for (let i = sparkles.length - 1; i >= 0; i--) {
+    const s = sparkles[i];
+    s.position.x += s.userData.vx * dt;
+    s.position.y += s.userData.vy * dt;
+    s.position.z += s.userData.vz * dt;
+    s.userData.vy -= 8 * dt;
+    s.userData.vx *= 0.96;
+    s.userData.vz *= 0.96;
+    s.userData.life -= dt;
+    if (s.material && s.material.opacity !== undefined) {
+      s.material.opacity = Math.max(0, s.userData.life / s.userData.maxLife);
+    }
+    if (s.userData.life <= 0) {
+      scene3d.remove(s);
+      disposeMesh(s);
+      sparkles.splice(i, 1);
     }
   }
 }
