@@ -11,7 +11,7 @@ const io = new Server(server, { cors: { origin: '*' } });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 // Redirigir /<juego> -> /<juego>/ para que las rutas relativas funcionen
-['snake', 'tetris', 'blockblast', 'pvz', 'mergefruit', 'wonderboy', 'tacos'].forEach(game => {
+['snake', 'tetris', 'blockblast', 'pvz', 'mergefruit', 'tacos'].forEach(game => {
   app.get('/' + game, (req, res) => res.redirect('/' + game + '/'));
 });
 
