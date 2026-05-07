@@ -188,7 +188,7 @@ function angleLerp(a, b, t) {
   while (d < -Math.PI) d += Math.PI * 2;
   return a + d * t;
 }
-function radiusFor(length) { return 10 + Math.min(32, Math.sqrt(length) * 0.85); }
+function radiusFor(length) { return 7 + Math.min(28, Math.sqrt(Math.max(1, length)) * 0.85); }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -1664,7 +1664,7 @@ function updateHUD() {
   }
 
   if (me) {
-    hudLength.textContent = Math.floor(me.length);
+    hudLength.textContent = Math.max(0, Math.floor(me.length));
     hudKills.textContent = me.kills || 0;
     const streak = me.streak || 0;
     hudStreak.textContent = streak;

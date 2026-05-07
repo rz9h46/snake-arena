@@ -240,7 +240,7 @@ for (const w of Object.values(worlds)) {
 }
 
 function rand(a, b) { return Math.random() * (b - a) + a; }
-function radiusFor(length, mul = 1) { return (10 + Math.min(32, Math.sqrt(length) * 0.85)) * mul; }
+function radiusFor(length, mul = 1) { return (7 + Math.min(28, Math.sqrt(Math.max(1, length)) * 0.85)) * mul; }
 function randomColor() {
   const palette = ['#ff5e5e', '#ffb35e', '#ffe65e', '#9aff5e', '#5effb6',
                    '#5ee0ff', '#5e8eff', '#b65eff', '#ff5ee0', '#ff5e9a'];

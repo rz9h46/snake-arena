@@ -687,11 +687,67 @@ kbd {
 
 @media (max-width: 600px) {
   .panel { min-width: auto; width: 100%; padding: 22px; }
-  #leaderboard-live { width: 150px; font-size: 12px; }
-  #minimap { width: 110px; height: 110px; }
-  #killfeed { width: 150px; }
-  .ability-circle { width: 70px; height: 70px; }
-  .ability-icon { font-size: 24px; }
-  .hud-row { max-width: calc(100% - 170px); }
-  #emote-hint { font-size: 10px; }
+
+  /* HUD ultra compacto: solo lo esencial */
+  .hud-row {
+    top: 8px; left: 8px; right: 8px;
+    max-width: none;
+    gap: 4px;
+  }
+  .hud-pill {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 999px;
+    gap: 3px;
+  }
+  .hud-label { font-size: 8px; letter-spacing: 0.8px; }
+  /* esconder pills no esenciales en mobile (los del medio) */
+  #hud-pos-pill, #hud-mode-pill, .xp-pill, #btn-ingame-help { display: none; }
+
+  /* leaderboard mini y replegable */
+  #leaderboard-live {
+    top: auto; bottom: 12px; left: 12px; right: auto;
+    width: 130px;
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  #leaderboard-live #lb-list li { padding: 1px 0; font-size: 11px; }
+  #leaderboard-live .lb-title { font-size: 9px; margin-bottom: 4px; }
+
+  /* minimap más chico, arriba a la derecha */
+  #minimap {
+    top: auto; bottom: 130px; right: 8px;
+    width: 80px; height: 80px;
+  }
+
+  /* killfeed más estrecho y arriba a la derecha */
+  #killfeed { top: 50px; right: 8px; width: 120px; }
+  .killfeed-item { font-size: 10px; padding: 4px 6px; }
+
+  /* ability bar más chico y reposicionado para no chocar con los joysticks */
+  #ability-bar { bottom: 165px; left: 8px; gap: 8px; }
+  .ability-circle { width: 56px; height: 56px; }
+  .ability-icon { font-size: 20px; }
+  .ability-name { font-size: 11px; }
+
+  /* effect stack horizontal */
+  #effects-stack { top: 44px; left: 8px; flex-direction: column; max-width: 60%; gap: 3px; }
+  .effect-pill { padding: 3px 8px; font-size: 10px; }
+  .effect-pill .ico { font-size: 12px; }
+
+  /* joysticks más chicos */
+  #joy-left, #joy-right { width: 100px; height: 100px; bottom: 18px; }
+  #joy-left { left: 12px; }
+  #joy-right { right: 12px; }
+  .joy-thumb { width: 44px; height: 44px; }
+  .joy-tag { font-size: 9px; bottom: -16px; }
+
+  #emote-hint { display: none; }
+}
+
+@media (max-width: 380px) {
+  /* reducir aún más en celulares chicos */
+  .hud-pill { padding: 3px 6px; font-size: 10px; }
+  #leaderboard-live { width: 110px; }
+  #minimap { width: 70px; height: 70px; bottom: 120px; }
 }
