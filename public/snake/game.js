@@ -26,7 +26,6 @@ const POWERUPS = {
   // nuevos
   crystal: { ico: '💎', color: '#a8ffd5', dur: 0,  name: 'Crystal',  instant: true,  desc: '+30 largo' },
   bolt:    { ico: '⚡', color: '#fff45e', dur: 0,  name: 'Bolt',     instant: true,  desc: 'Mata enemigo cercano' },
-  stealth: { ico: '🌑', color: '#5e6e9a', dur: 6,  name: 'Stealth',  instant: false },
   freeze:  { ico: '🧊', color: '#7ad8ff', dur: 0,  name: 'Freeze',   instant: true,  desc: 'Congela enemigos cercanos' },
   turbo:   { ico: '🚀', color: '#ff7e3a', dur: 6,  name: 'Turbo',    instant: false },
   hypno:   { ico: '🌀', color: '#ff5edc', dur: 0,  name: 'Hypno',    instant: true,  desc: 'Invierte controles enemigos' },
@@ -39,7 +38,7 @@ const POWERUPS = {
 // solo estos aparecen como pickups por azar
 const POWERUP_SPAWN_TYPES = [
   'magnet', 'phantom', 'frost', 'frenzy', 'mega',
-  'crystal', 'bolt', 'stealth', 'freeze', 'turbo',
+  'crystal', 'bolt', 'freeze', 'turbo',
   'hypno', 'heart', 'godmode'
 ];
 
@@ -1444,14 +1443,11 @@ function drawSnake(s) {
   const frenzy = (s.effects && s.effects.frenzy > 0);
   const frost = (s.effects && s.effects.frost > 0);
   const mega = (s.effects && s.effects.mega > 0);
-  const stealth = (s.effects && s.effects.stealth > 0);
   const frozen = (s.effects && s.effects.frozen > 0);
   const turbo = (s.effects && s.effects.turbo > 0);
 
   let alpha = 1;
   if (phantom) alpha = 0.5;
-  if (stealth && !s.isMe) alpha = 0.18;
-  else if (stealth) alpha = 0.55;
   ctx.globalAlpha = alpha;
 
   // boost / turbo trail

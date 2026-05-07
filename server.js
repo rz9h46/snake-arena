@@ -92,12 +92,12 @@ const MODES = {
 // power-ups por azar (shield se spawnea aparte para que abunden)
 const POWERUP_TYPES = [
   'magnet', 'phantom', 'frost', 'frenzy', 'mega',
-  'crystal', 'bolt', 'stealth', 'freeze', 'turbo',
+  'crystal', 'bolt', 'freeze', 'turbo',
   'hypno', 'heart', 'godmode'
 ];
 const POWERUP_DURATION = {
   shield: 10, magnet: 10, phantom: 5, frost: 5, frenzy: 7, mega: 9,
-  crystal: 0, bolt: 0, stealth: 6, freeze: 0, turbo: 6, frozen: 3,
+  crystal: 0, bolt: 0, freeze: 0, turbo: 6, frozen: 3,
   hypno: 0, heart: 0, godmode: 10, reversed: 5
 };
 // efectos instantaneos (no se guardan en effects, se aplican al recoger)
