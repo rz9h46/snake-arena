@@ -500,12 +500,16 @@ function botIdleWander(bot) {
 // ==================== Update loop ====================
 let lastFrame = performance.now();
 function loop(now) {
-  const dt = Math.min(0.05, (now - lastFrame) / 1000);
-  lastFrame = now;
-  if (state.playing && !state.paused && !state.meeting && !state.ended) {
-    update(dt);
+  try {
+    const dt = Math.min(0.05, (now - lastFrame) / 1000);
+    lastFrame = now;
+    if (state.playing && !state.paused && !state.meeting && !state.ended) {
+      update(dt);
+    }
+    render();
+  } catch (err) {
+    console.error('Among Us loop error:', err);
   }
-  render();
   requestAnimationFrame(loop);
 }
 
@@ -588,10 +592,11 @@ function render() {
   for (const bot of state.bots) {
     if (bot.alive) drawCrewmate(bot);
   }
-  // player (last so it's on top)
-  drawCrewmate(state.player, true);
-  // kill range indicator
-  if (state.player.killCd <= 0) drawKillRange();
+  // player (last so it's on top) — solo si ya empezó el juego
+  if (state.player) {
+    drawCrewmate(state.player, true);
+    if (state.player.killCd <= 0) drawKillRange();
+  }
 }
 
 function w2sX(x) { return x - camera.x; }
