@@ -595,8 +595,8 @@ function drawPlantSprite(kind, cx, groundY, alpha = 1, plantData = null) {
 }
 
 function drawSunflower(cx, gy, t) {
-  const stemH = CELL_H * 0.45;
-  const headR = CELL_W * 0.28;
+  const stemH = CELL_H * 0.34;
+  const headR = CELL_W * 0.22;
   const bob = Math.sin(t) * 1.5;
   // stem
   ctx.fillStyle = '#3a8a30';
@@ -642,8 +642,8 @@ function drawSunflower(cx, gy, t) {
 }
 
 function drawPeashooter(cx, gy, t, p) {
-  const stemH = CELL_H * 0.5;
-  const headR = CELL_W * 0.3;
+  const stemH = CELL_H * 0.38;
+  const headR = CELL_W * 0.22;
   const shoot = p && p.lastAction < 0.15 ? Math.sin(p.lastAction * 30) * 3 : 0;
   // stem
   ctx.fillStyle = '#3a8a30';
@@ -688,7 +688,7 @@ function drawPeashooter(cx, gy, t, p) {
 }
 
 function drawWallnut(cx, gy, t, p) {
-  const headR = CELL_W * 0.32;
+  const headR = CELL_W * 0.25;
   const headY = gy - headR;
   // cuerpo
   ctx.fillStyle = '#9a5818';
@@ -725,8 +725,8 @@ function drawWallnut(cx, gy, t, p) {
 
 function drawSnowpea(cx, gy, t, p) {
   // similar a peashooter pero azul/blanco
-  const stemH = CELL_H * 0.5;
-  const headR = CELL_W * 0.3;
+  const stemH = CELL_H * 0.38;
+  const headR = CELL_W * 0.22;
   ctx.fillStyle = '#3a8a30';
   ctx.fillRect(cx - 3, gy - stemH, 6, stemH);
   ctx.fillStyle = '#5fbb40';
@@ -767,8 +767,8 @@ function drawSnowpea(cx, gy, t, p) {
 }
 
 function drawCherry(cx, gy, t) {
-  const r = CELL_W * 0.22;
-  const y = gy - r * 1.5;
+  const r = CELL_W * 0.17;
+  const y = gy - r * 1.6;
   const pulse = 1 + Math.sin(t * 4) * 0.08;
   // dos cerezas
   for (const ox of [-r * 0.7, r * 0.7]) {
@@ -805,133 +805,274 @@ function drawCherry(cx, gy, t) {
 }
 
 // ==================== Sprites de zombies ====================
+// Andar zombie (lurch): ciclo lento de 4 fases con un pie que arrastra.
+// Inspirado en PvZ original.
 function drawZombieSprite(z) {
   const def = ZOMBIE_TYPES[z.kind];
   const cx = z.x + CELL_W / 2;
-  const groundY = z.row * CELL_H + CELL_H * 0.94;
-  const t = performance.now() * 0.003;
+  const groundY = z.row * CELL_H + CELL_H * 0.96;
+  const time = performance.now() * 0.001;
   const isEating = state.plants.some(pl => pl.row === z.row && pl.col === Math.floor((z.x - 6) / CELL_W));
-  const walkSpeed = isEating ? 0 : (def.speed > 0 ? 1 : 0);
-  const stride = Math.sin(t * 6 * walkSpeed) * 4;
-  const bob = Math.abs(Math.sin(t * 6 * walkSpeed)) * 2;
-  // sombra
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-  ctx.beginPath();
-  ctx.ellipse(cx, groundY, 16, 4, 0, 0, Math.PI * 2);
-  ctx.fill();
-  const headR = 9;
-  const bodyTop = groundY - 38 - bob;
-  const headY = bodyTop - headR;
-  // piernas (con stride)
-  ctx.strokeStyle = '#4a3010';
-  ctx.lineWidth = 5;
-  ctx.lineCap = 'butt';
-  ctx.beginPath();
-  ctx.moveTo(cx - 4, bodyTop + 18);
-  ctx.lineTo(cx - 4 + stride, groundY - 1);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx + 4, bodyTop + 18);
-  ctx.lineTo(cx + 4 - stride, groundY - 1);
-  ctx.stroke();
-  // pantalones rotos
-  ctx.fillStyle = '#5a4020';
-  ctx.fillRect(cx - 8, bodyTop + 14, 16, 6);
-  // cuerpo (camisa rota)
-  ctx.fillStyle = '#888a6c';
-  ctx.fillRect(cx - 9, bodyTop, 18, 16);
-  // manchas
-  ctx.fillStyle = '#5a5e44';
-  ctx.fillRect(cx - 7, bodyTop + 4, 4, 3);
-  ctx.fillRect(cx + 3, bodyTop + 9, 4, 3);
-  // brazo extendido al frente (cuando come o camina)
-  ctx.fillStyle = '#a8c8a0';
-  ctx.fillRect(cx - 4, bodyTop + 4, 14, 4);
-  ctx.fillRect(cx - 6, bodyTop + 4, 4, 8);   // brazo trasero corto
-  if (isEating) {
-    // mandíbula moviéndose
-    ctx.fillStyle = '#0a0d18';
-    ctx.fillRect(cx - 4, headY + 3 + Math.sin(t * 14) * 1.5, 8, 2);
+  // ciclo de andar zombie: lento, arrastrando
+  const cycle = isEating ? 0 : ((time * 1.3 + z.x * 0.005) % 1);
+  // dos fases: 0..0.5 (paso adelante), 0.5..1 (arrastra el pie)
+  let leftFootX, rightFootX, leanY;
+  if (cycle < 0.5) {
+    // pie izq plantado, pie derecho cruza arrastrándose
+    const p = cycle / 0.5;
+    rightFootX = -2 + p * 8;     // de atrás hacia adelante
+    leftFootX = 2;
+    leanY = 1 + Math.sin(p * Math.PI) * 1.5;
+  } else {
+    // pie der plantado, pie izq arrastra atrás-adelante muy lento
+    const p = (cycle - 0.5) / 0.5;
+    leftFootX = 2 - p * 6;
+    rightFootX = 6;
+    leanY = 1 + Math.sin(p * Math.PI) * 0.8;
   }
-  // cabeza
+  // sway lateral mínimo (cabezada zombie hacia adelante)
+  const headLean = Math.sin(time * 1.3 + z.x * 0.005) * 1.2;
+
+  // medidas (más grandes)
+  const headR = 13;
+  const bodyW = 24;
+  const bodyH = 22;
+  const legH = 20;
+  const bodyTop = groundY - legH - bodyH - leanY;
+  const headY = bodyTop - headR - 1;
+
+  // sombra extendida (refleja zombie inclinado)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 2, groundY, 22, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ===== piernas (lurching) =====
+  // pierna izquierda
+  ctx.strokeStyle = '#1a1208';
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'square';
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, bodyTop + bodyH - 2);
+  ctx.lineTo(cx - 6 + leftFootX, groundY - 2);
+  ctx.stroke();
+  // pierna derecha
+  ctx.beginPath();
+  ctx.moveTo(cx + 6, bodyTop + bodyH - 2);
+  ctx.lineTo(cx + 6 + rightFootX, groundY - 2);
+  ctx.stroke();
+  // pantalones rasgados (color marron oscuro)
+  ctx.fillStyle = '#3a2810';
+  ctx.fillRect(cx - 12, bodyTop + bodyH - 6, 24, 10);
+  // jirones
+  ctx.fillStyle = '#2a1810';
+  ctx.fillRect(cx - 9, bodyTop + bodyH - 1, 4, 6);
+  ctx.fillRect(cx + 5, bodyTop + bodyH + 1, 3, 5);
+
+  // ===== cuerpo (torso) =====
+  // outline negro
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(cx - bodyW / 2 - 1, bodyTop - 1, bodyW + 2, bodyH + 2);
+  // camisa rasgada gris-verdosa
+  ctx.fillStyle = '#7a7e60';
+  ctx.fillRect(cx - bodyW / 2, bodyTop, bodyW, bodyH);
+  // sombra interior (lado derecho)
+  ctx.fillStyle = '#5a5e44';
+  ctx.fillRect(cx + bodyW / 2 - 5, bodyTop, 5, bodyH);
+  // manchas de sangre/podredumbre
+  ctx.fillStyle = '#5a2010';
+  ctx.fillRect(cx - 4, bodyTop + 6, 5, 3);
+  ctx.fillRect(cx + 2, bodyTop + 13, 4, 3);
+  // jirones en el pecho (piel verde asomando)
+  ctx.fillStyle = '#a8c8a0';
+  ctx.fillRect(cx - 2, bodyTop + 9, 5, 3);
+  // costillas asomando (líneas blancas)
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(cx - 1, bodyTop + 9, 3, 1);
+  ctx.fillRect(cx - 1, bodyTop + 11, 3, 1);
+
+  // ===== brazos extendidos al frente (zombie pose) =====
+  // brazo trasero (más arriba, atrás)
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(cx - 4, bodyTop + 3, 22, 7);
+  ctx.fillStyle = '#a8c8a0';
+  ctx.fillRect(cx - 3, bodyTop + 4, 20, 5);
+  // mano trasera
+  ctx.fillStyle = '#a8c8a0';
+  ctx.fillRect(cx + 17, bodyTop + 3, 5, 8);
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(cx + 22, bodyTop + 5, 2, 2);   // garra
+  ctx.fillRect(cx + 22, bodyTop + 8, 2, 2);
+
+  // brazo delantero (más abajo, sobresale más)
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(cx - 2, bodyTop + 11, 26, 7);
+  ctx.fillStyle = '#a8c8a0';
+  ctx.fillRect(cx - 1, bodyTop + 12, 24, 5);
+  // mano delantera con dedos crispados
+  ctx.fillStyle = '#a8c8a0';
+  ctx.fillRect(cx + 22, bodyTop + 9, 6, 12);
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(cx + 28, bodyTop + 11, 2, 2);   // garras
+  ctx.fillRect(cx + 28, bodyTop + 14, 2, 2);
+  ctx.fillRect(cx + 28, bodyTop + 17, 2, 2);
+  // sombra del brazo
+  ctx.fillStyle = '#7a9a78';
+  ctx.fillRect(cx - 1, bodyTop + 16, 24, 1);
+
+  // ===== cabeza =====
+  // outline
+  ctx.fillStyle = '#1a1208';
+  ctx.beginPath();
+  ctx.arc(cx + headLean, headY, headR + 1, 0, Math.PI * 2);
+  ctx.fill();
+  // piel verde
   ctx.fillStyle = '#a8c8a0';
   ctx.beginPath();
-  ctx.arc(cx, headY, headR, 0, Math.PI * 2);
+  ctx.arc(cx + headLean, headY, headR, 0, Math.PI * 2);
   ctx.fill();
-  // sombras en la cara
+  // sombra inferior
   ctx.fillStyle = '#7a9a78';
   ctx.beginPath();
-  ctx.ellipse(cx, headY + 3, headR * 0.7, headR * 0.4, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + headLean + 1, headY + 4, headR * 0.7, headR * 0.4, 0, 0, Math.PI * 2);
   ctx.fill();
-  // pelo estilo PvZ (mechón)
-  ctx.fillStyle = '#6a4818';
-  ctx.fillRect(cx - 7, headY - 8, 12, 4);
-  ctx.fillRect(cx - 5, headY - 10, 8, 2);
-  // ojos rojos
+
+  // pelo despeinado (mechones tipo PvZ)
+  ctx.fillStyle = '#3a2010';
+  ctx.fillRect(cx + headLean - 9, headY - headR + 1, 3, 5);
+  ctx.fillRect(cx + headLean - 5, headY - headR - 2, 3, 7);
+  ctx.fillRect(cx + headLean - 1, headY - headR - 4, 3, 8);
+  ctx.fillRect(cx + headLean + 3, headY - headR - 2, 3, 6);
+  ctx.fillRect(cx + headLean + 7, headY - headR + 1, 3, 4);
+
+  // ojos blancos (saltones)
   ctx.fillStyle = '#fff';
-  ctx.fillRect(cx - 5, headY - 2, 3, 3);
-  ctx.fillRect(cx + 2, headY - 2, 3, 3);
+  ctx.fillRect(cx + headLean - 6, headY - 3, 4, 4);
+  ctx.fillRect(cx + headLean + 2, headY - 3, 4, 4);
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(cx + headLean - 6, headY - 3, 4, 1);   // borde sombra
+  ctx.fillRect(cx + headLean + 2, headY - 3, 4, 1);
+  // pupilas rojas brillantes
   ctx.fillStyle = '#cc1818';
-  ctx.fillRect(cx - 4, headY - 1, 2, 2);
-  ctx.fillRect(cx + 3, headY - 1, 2, 2);
-  // boca (cuando no come)
-  if (!isEating) {
-    ctx.fillStyle = '#0a0d18';
-    ctx.fillRect(cx - 3, headY + 3, 6, 1);
+  ctx.fillRect(cx + headLean - 5, headY - 1, 2, 2);
+  ctx.fillRect(cx + headLean + 3, headY - 1, 2, 2);
+  ctx.shadowBlur = 6;
+  ctx.shadowColor = '#ff3030';
+  ctx.fillStyle = '#ff5050';
+  ctx.fillRect(cx + headLean - 5, headY - 1, 1, 1);
+  ctx.fillRect(cx + headLean + 3, headY - 1, 1, 1);
+  ctx.shadowBlur = 0;
+  // cejas en V (enojo)
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(cx + headLean - 8, headY - 6, 5, 2);
+  ctx.fillRect(cx + headLean + 3, headY - 6, 5, 2);
+  ctx.fillRect(cx + headLean - 4, headY - 5, 2, 1);
+  ctx.fillRect(cx + headLean + 1, headY - 5, 2, 1);
+
+  // ===== boca =====
+  if (isEating) {
+    // mandíbula abierta masticando
+    const chomp = Math.abs(Math.sin(time * 14)) * 4;
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(cx + headLean - 6, headY + 3, 12, 5 + chomp);
+    // dientes torcidos
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx + headLean - 5, headY + 3, 2, 2);
+    ctx.fillRect(cx + headLean - 1, headY + 3, 2, 2);
+    ctx.fillRect(cx + headLean + 3, headY + 3, 2, 2);
+    ctx.fillRect(cx + headLean - 4, headY + 6 + chomp, 2, 2);
+    ctx.fillRect(cx + headLean + 2, headY + 6 + chomp, 2, 2);
+  } else {
+    // boca entreabierta con dientes
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(cx + headLean - 5, headY + 4, 10, 3);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx + headLean - 4, headY + 4, 2, 2);
+    ctx.fillRect(cx + headLean - 1, headY + 4, 2, 2);
+    ctx.fillRect(cx + headLean + 2, headY + 4, 2, 2);
   }
-  // accesorio: cono naranja
+  // baba verde
+  ctx.fillStyle = '#5a8030';
+  ctx.fillRect(cx + headLean + 3, headY + 8, 1, 4);
+  // sangre (puntito rojo en la mejilla)
+  ctx.fillStyle = '#cc1818';
+  ctx.fillRect(cx + headLean + 8, headY, 1, 2);
+
+  // ===== accesorios =====
   if (z.kind === 'cone') {
-    ctx.fillStyle = '#ee6818';
+    // cono naranja con outline
+    ctx.fillStyle = '#1a1208';
     ctx.beginPath();
-    ctx.moveTo(cx - 8, headY - 6);
-    ctx.lineTo(cx + 8, headY - 6);
-    ctx.lineTo(cx, headY - 22);
+    ctx.moveTo(cx + headLean - 13, headY - headR);
+    ctx.lineTo(cx + headLean + 13, headY - headR);
+    ctx.lineTo(cx + headLean, headY - headR - 26);
     ctx.closePath();
     ctx.fill();
+    ctx.fillStyle = '#ee6818';
+    ctx.beginPath();
+    ctx.moveTo(cx + headLean - 11, headY - headR + 0.5);
+    ctx.lineTo(cx + headLean + 11, headY - headR + 0.5);
+    ctx.lineTo(cx + headLean, headY - headR - 23);
+    ctx.closePath();
+    ctx.fill();
+    // bandas blancas
     ctx.fillStyle = '#fff';
-    ctx.fillRect(cx - 5, headY - 12, 10, 2);
-    ctx.strokeStyle = '#a04818';
-    ctx.lineWidth = 1;
+    ctx.fillRect(cx + headLean - 8, headY - headR - 8, 16, 3);
+    ctx.fillRect(cx + headLean - 5, headY - headR - 16, 10, 2);
+    // sombra lateral
+    ctx.fillStyle = '#a04818';
     ctx.beginPath();
-    ctx.moveTo(cx - 8, headY - 6);
-    ctx.lineTo(cx, headY - 22);
-    ctx.lineTo(cx + 8, headY - 6);
-    ctx.stroke();
+    ctx.moveTo(cx + headLean + 4, headY - headR);
+    ctx.lineTo(cx + headLean + 11, headY - headR);
+    ctx.lineTo(cx + headLean + 1, headY - headR - 22);
+    ctx.closePath();
+    ctx.fill();
   }
-  // accesorio: balde gris
   if (z.kind === 'bucket') {
-    ctx.fillStyle = '#7a7a7a';
-    ctx.fillRect(cx - 9, headY - 18, 18, 12);
+    ctx.fillStyle = '#1a1208';
+    ctx.fillRect(cx + headLean - 13, headY - headR - 18, 26, 18);
+    ctx.fillStyle = '#888';
+    ctx.fillRect(cx + headLean - 12, headY - headR - 17, 24, 16);
+    // brillo metálico
+    ctx.fillStyle = '#bbb';
+    ctx.fillRect(cx + headLean - 11, headY - headR - 16, 4, 14);
+    // sombra
     ctx.fillStyle = '#5a5a5a';
-    ctx.fillRect(cx - 9, headY - 7, 18, 2);
-    ctx.fillRect(cx - 9, headY - 18, 18, 2);
+    ctx.fillRect(cx + headLean + 6, headY - headR - 17, 6, 16);
+    // bordes
     ctx.fillStyle = '#3a3a3a';
+    ctx.fillRect(cx + headLean - 12, headY - headR - 17, 24, 2);
+    ctx.fillRect(cx + headLean - 12, headY - headR - 4, 24, 3);
     // mango
-    ctx.strokeStyle = '#3a3a3a';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#1a1208';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(cx, headY - 19, 6, Math.PI, 2 * Math.PI);
+    ctx.arc(cx + headLean, headY - headR - 19, 9, Math.PI, 2 * Math.PI);
     ctx.stroke();
   }
+
   // marcador slow
   if (z.slowUntil > 0) {
     ctx.fillStyle = 'rgba(168, 230, 255, 0.5)';
     ctx.beginPath();
-    ctx.arc(cx, bodyTop + 8, 18, 0, Math.PI * 2);
+    ctx.arc(cx, bodyTop + bodyH / 2, 26, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#a8e6ff';
-    ctx.font = '14px serif';
+    ctx.font = 'bold 14px serif';
     ctx.textAlign = 'center';
-    ctx.fillText('❄', cx + 14, headY - 4);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('❄', cx + 18, headY - 6);
   }
-  // hp bar arriba si dañado
+
+  // hp bar arriba
   if (z.hp < def.hp) {
     const ratio = Math.max(0, z.hp / def.hp);
-    const barY = headY - (z.kind === 'normal' ? 14 : (z.kind === 'cone' ? 28 : 24));
+    const offsetUp = z.kind === 'cone' ? 30 : (z.kind === 'bucket' ? 24 : 8);
+    const barY = headY - headR - offsetUp;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(cx - 16, barY, 32, 4);
+    ctx.fillRect(cx - 18, barY, 36, 4);
     ctx.fillStyle = ratio > 0.4 ? '#9aff5e' : '#ff5e7a';
-    ctx.fillRect(cx - 16, barY, 32 * ratio, 4);
+    ctx.fillRect(cx - 18, barY, 36 * ratio, 4);
   }
 }
 
