@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Tetris Clásico</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <a class="back-link" href="/">← Arcade</a>
+  <h1>TETRIS <span class="accent">CLÁSICO</span></h1>
+  <button id="btn-help" class="topbar-btn" title="Ayuda">❓</button>
+</header>
+
+<main id="stage"></main>
+
+<div id="menu" class="overlay">
+  <div class="panel">
+    <h2>Tetris Clásico</h2>
+    <p class="subtitle">Acomodá las piezas, completá líneas, no toques el techo.</p>
+    <div class="mode-grid">
+      <button class="mode-card" data-players="1">
+        <div class="mode-ico">🎮</div>
+        <div class="mode-title">1 Jugador</div>
+        <div class="mode-desc">Solo contra la gravedad</div>
+      </button>
+      <button class="mode-card" data-players="2">
+        <div class="mode-ico">🎮🎮</div>
+        <div class="mode-title">2 Jugadores</div>
+        <div class="mode-desc">Pantalla dividida · enviá líneas al rival</div>
+      </button>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" id="btn-rank-open">🏆 Récords</button>
+      <button class="btn ghost" id="btn-help-open">❓ Cómo jugar</button>
+    </div>
+  </div>
+</div>
+
+<div id="help-modal" class="overlay hidden">
+  <div class="panel">
+    <h2>Controles</h2>
+    <div class="help-grid">
+      <div>
+        <h3>Jugador 1</h3>
+        <ul>
+          <li><kbd>←</kbd> <kbd>→</kbd> mover</li>
+          <li><kbd>↓</kbd> caída suave</li>
+          <li><kbd>↑</kbd> / <kbd>X</kbd> rotar →</li>
+          <li><kbd>Z</kbd> rotar ←</li>
+          <li><kbd>Espacio</kbd> caída dura</li>
+          <li><kbd>C</kbd> guardar pieza (hold)</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Jugador 2</h3>
+        <ul>
+          <li><kbd>A</kbd> <kbd>D</kbd> mover</li>
+          <li><kbd>S</kbd> caída suave</li>
+          <li><kbd>W</kbd> rotar →</li>
+          <li><kbd>Q</kbd> rotar ←</li>
+          <li><kbd>F</kbd> caída dura</li>
+          <li><kbd>E</kbd> guardar pieza (hold)</li>
+        </ul>
+      </div>
+    </div>
+    <p class="info"><strong>Touch / mouse:</strong> usá los botones en pantalla. <strong>P:</strong> pausar.</p>
+    <p class="info"><strong>2P:</strong> al completar 2+ líneas, le mandás basura al rival. El primero que colapsa pierde.</p>
+    <button class="btn primary" id="help-close">Entendido</button>
+  </div>
+</div>
+
+<div id="rank-modal" class="overlay hidden">
+  <div class="panel">
+    <h2>🏆 Récords locales</h2>
+    <ol id="rank-list"></ol>
+    <button class="btn" id="rank-close">Volver</button>
+  </div>
+</div>
+
+<div id="gameover" class="overlay hidden">
+  <div class="panel">
+    <h2 id="gameover-title">Fin del juego</h2>
+    <div class="stats">
+      <div><span class="lbl">Score</span><strong id="go-score">0</strong></div>
+      <div><span class="lbl">Líneas</span><strong id="go-lines">0</strong></div>
+      <div><span class="lbl">Nivel</span><strong id="go-level">1</strong></div>
+      <div><span class="lbl">Mejor</span><strong id="go-best">0</strong></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="go-replay">🔄 Otra</button>
+      <button class="btn" id="go-menu">Menú</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause-overlay" class="hidden">
+  <div class="pause-card">
+    <div class="pause-title">⏸ PAUSA</div>
+    <button class="btn primary" id="btn-resume">▶ Reanudar</button>
+    <button class="btn" id="btn-pause-menu">Menú principal</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

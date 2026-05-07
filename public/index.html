@@ -2,184 +2,76 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-<title>Snake Arena</title>
-<link rel="stylesheet" href="style.css" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Arcade · elegí tu juego</title>
+<link rel="stylesheet" href="launcher.css" />
 </head>
 <body>
-<canvas id="game"></canvas>
-<canvas id="fx"></canvas>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
 
-<div id="hud" class="hidden">
-  <div class="hud-row">
-    <div class="hud-pill"><span class="hud-label">Largo</span><span id="hud-length">10</span></div>
-    <div class="hud-pill"><span class="hud-label">Kills</span><span id="hud-kills">0</span></div>
-    <div class="hud-pill" id="hud-streak-pill"><span class="hud-label">Streak</span><span id="hud-streak">0</span></div>
-    <div class="hud-pill"><span class="hud-label">Pos</span><span id="hud-pos">-/-</span></div>
-    <div class="hud-pill mode-pill" id="hud-mode">SP</div>
-    <div class="hud-pill xp-pill"><span class="hud-label">Lv</span><span id="hud-level">1</span><span class="xp-bar"><span class="xp-fill" id="xp-fill"></span></span></div>
-    <button class="hud-pill hud-btn" id="btn-pause" title="Pausar (P)">⏸ Pausa</button>
-  </div>
+<header class="hero">
+  <div class="logo">🕹</div>
+  <h1>ARCADE</h1>
+  <p>Elegí tu juego</p>
+</header>
 
-  <div id="pause-overlay" class="hidden">
-    <div class="pause-card">
-      <div class="pause-title">⏸ PAUSA</div>
-      <button class="btn primary" id="btn-resume">▶ Reanudar</button>
-      <button class="btn" id="btn-pause-menu">Menú principal</button>
-      <div class="pause-hint">Tecla <kbd>P</kbd> para alternar</div>
+<main class="games-grid">
+  <a class="game-card ready" href="/snake/" data-color="#5effb6">
+    <div class="game-art" style="--c1:#5effb6;--c2:#5e8eff">
+      <span class="emoji">🐍</span>
     </div>
-  </div>
-
-  <div id="leaderboard-live">
-    <div class="lb-title">Ranking en vivo</div>
-    <ol id="lb-list"></ol>
-  </div>
-
-  <div id="effects-stack"></div>
-
-  <div id="ability-bar">
-    <div class="ability-circle" id="ability-circle">
-      <svg viewBox="0 0 100 100">
-        <circle class="ab-bg" cx="50" cy="50" r="45"></circle>
-        <circle class="ab-fill" id="ab-fill" cx="50" cy="50" r="45"></circle>
-      </svg>
-      <div class="ability-icon" id="ability-icon">⚡</div>
-      <div class="ability-key">Q</div>
+    <div class="game-info">
+      <h2>Snake Arena</h2>
+      <p>Single-player, Multiplayer y Battle Royale. Clases, power-ups, bombas, láseres y ranking global.</p>
+      <ul class="tags"><li>SP</li><li>MP</li><li>BR</li><li>Power-ups</li></ul>
     </div>
-    <div class="ability-name" id="ability-name">Dash</div>
-  </div>
+    <span class="badge ready">▶ Jugar</span>
+  </a>
 
-  <canvas id="minimap" width="180" height="180"></canvas>
-
-  <div id="emote-hint">Emotes: <kbd>1</kbd>👍 <kbd>2</kbd>😂 <kbd>3</kbd>😱 <kbd>4</kbd>🔥 <kbd>5</kbd>👋</div>
-
-  <div id="combo-burst" class="hidden"></div>
-
-  <div id="killfeed"></div>
-</div>
-
-<div id="menu" class="overlay">
-  <div class="panel wide">
-    <div class="logo">
-      <h1>SNAKE <span class="accent">ARENA</span></h1>
-      <span class="version">v2.0 — Powers Edition</span>
+  <a class="game-card ready" href="/pvz/" data-color="#9aff5e">
+    <div class="game-art" style="--c1:#9aff5e;--c2:#5effb6">
+      <span class="emoji">🌻</span>
     </div>
-    <p class="subtitle">Crece, devora, evade. Recogé power-ups, dominá habilidades y subí en el ranking.</p>
+    <div class="game-info">
+      <h2>Plants vs Zombies</h2>
+      <p>Defendé tu jardín de las hordas con plantas estratégicas y un sol que nunca alcanza.</p>
+      <ul class="tags"><li>Tower defense</li><li>Estrategia</li></ul>
+    </div>
+    <span class="badge ready">▶ Jugar</span>
+  </a>
 
-    <div class="config-grid">
-      <label class="field">
-        <span>Tu nombre</span>
-        <input id="name" maxlength="16" placeholder="Anónimo" />
-      </label>
-      <label class="field">
-        <span>Color</span>
-        <div id="colors"></div>
-      </label>
-      <div class="field">
-        <span>Skin</span>
-        <div id="skins"></div>
-      </div>
+  <a class="game-card ready" href="/tetris/" data-color="#5ee0ff">
+    <div class="game-art" style="--c1:#5ee0ff;--c2:#5e8eff">
+      <span class="emoji">🟦</span>
     </div>
+    <div class="game-info">
+      <h2>Tetris Clásico</h2>
+      <p>El de toda la vida, con modo 1 jugador y multijugador para compartir pantalla.</p>
+      <ul class="tags"><li>1P</li><li>2P</li><li>Arcade</li></ul>
+    </div>
+    <span class="badge ready">▶ Jugar</span>
+  </a>
 
-    <div class="field">
-      <span>Clase</span>
-      <div id="classes" class="class-grid"></div>
+  <a class="game-card ready" href="/blockblast/" data-color="#ffb35e">
+    <div class="game-art" style="--c1:#ffb35e;--c2:#ff5e7a">
+      <span class="emoji">🧱</span>
     </div>
+    <div class="game-info">
+      <h2>Block Blast</h2>
+      <p>Encajá bloques de formas variadas, completá líneas y mantené la grilla viva.</p>
+      <ul class="tags"><li>Puzzle</li><li>Casual</li></ul>
+    </div>
+    <span class="badge ready">▶ Jugar</span>
+  </a>
+</main>
 
-    <div class="field">
-      <span>Modo de juego</span>
-      <div class="mode-grid">
-        <button class="mode-card" data-mode="single" data-room="classic">
-          <div class="mode-icon">🐍</div>
-          <div class="mode-title">Un Jugador</div>
-          <div class="mode-desc">Local con 12 bots IA</div>
-        </button>
-        <button class="mode-card" data-mode="multi" data-room="classic">
-          <div class="mode-icon">🌐</div>
-          <div class="mode-title">Multijugador Clásico</div>
-          <div class="mode-desc">Arena gigante, jugadores reales</div>
-        </button>
-        <button class="mode-card" data-mode="multi" data-room="br">
-          <div class="mode-icon">⚡</div>
-          <div class="mode-title">Battle Royale</div>
-          <div class="mode-desc">Zona que se achica · último que queda gana</div>
-        </button>
-      </div>
-    </div>
+<footer class="foot">
+  <span>Hecho con ❤️ y noches sin dormir</span>
+  <span>·</span>
+  <a href="https://github.com/rz9h46/snake-arena" target="_blank" rel="noopener">GitHub</a>
+</footer>
 
-    <div class="actions secondary-actions">
-      <button class="btn ghost" id="btn-rank">🏆 Ranking</button>
-      <button class="btn ghost" id="btn-sound">🔊 Sonido</button>
-      <button class="btn ghost" id="btn-help">❓ Cómo jugar</button>
-    </div>
-  </div>
-</div>
-
-<div id="rank-modal" class="overlay hidden">
-  <div class="panel">
-    <h2>🏆 Ranking</h2>
-    <div class="tabs">
-      <button class="tab active" data-tab="single">Un jugador</button>
-      <button class="tab" data-tab="multi">Multijugador</button>
-      <button class="tab" data-tab="br">Battle Royale</button>
-    </div>
-    <div class="rank-list-wrap">
-      <ol id="rank-list"></ol>
-    </div>
-    <button class="btn" id="rank-close">Volver</button>
-  </div>
-</div>
-
-<div id="help-modal" class="overlay hidden">
-  <div class="panel">
-    <h2>Cómo jugar</h2>
-    <div class="help-content">
-      <p><strong>Mover:</strong> el mouse define la dirección. Tocá la pantalla en mobile.</p>
-      <p><strong>Boost:</strong> click izquierdo o <kbd>Espacio</kbd>. Consume largo pero te deja escapar o atrapar.</p>
-      <p><strong>Habilidad:</strong> <kbd>Q</kbd> para activar la habilidad de tu clase.</p>
-      <p><strong>Power-ups:</strong> tocalos para activarlos por unos segundos:</p>
-      <ul class="powerup-list">
-        <li><span class="pu-ico" style="background:#ffd75e">🛡</span><strong>Shield</strong> — 10s, bloquea un golpe mortal (¡hay muchos!)</li>
-        <li><span class="pu-ico" style="background:#5ee0ff">🧲</span><strong>Magnet</strong> — atrae comida cercana</li>
-        <li><span class="pu-ico" style="background:#b65eff">👻</span><strong>Phantom</strong> — atravesás otras serpientes</li>
-        <li><span class="pu-ico" style="background:#a8e6ff">❄</span><strong>Frost</strong> — aura que frena enemigos a tu alrededor</li>
-        <li><span class="pu-ico" style="background:#ff5e7a">🔥</span><strong>Frenzy</strong> — boost gratis</li>
-        <li><span class="pu-ico" style="background:#fff5a8">★</span><strong>Mega-Eat</strong> — comida vale 3×</li>
-        <li><span class="pu-ico" style="background:#a8ffd5">💎</span><strong>Crystal</strong> — instantáneo: +30 de largo</li>
-        <li><span class="pu-ico" style="background:#fff45e">⚡</span><strong>Bolt</strong> — instantáneo: rayo que mata al enemigo cercano</li>
-        <li><span class="pu-ico" style="background:#5e6e9a;color:#fff">🌑</span><strong>Stealth</strong> — sos casi invisible 6s</li>
-        <li><span class="pu-ico" style="background:#7ad8ff">🧊</span><strong>Freeze</strong> — instantáneo: congela enemigos en 500px por 3s</li>
-        <li><span class="pu-ico" style="background:#ff7e3a">🚀</span><strong>Turbo</strong> — super velocidad 6s sin gastar largo</li>
-        <li><span class="pu-ico" style="background:#ff5edc">🌀</span><strong>Hypno</strong> — invierte controles enemigos 5s</li>
-        <li><span class="pu-ico" style="background:#ff5e7a">❤️</span><strong>Heart</strong> — instantáneo: restaura largo perdido</li>
-        <li><span class="pu-ico" style="background:#fff8c0">😇</span><strong>Godmode</strong> — 10s totalmente inmortal</li>
-      </ul>
-      <p><strong>Peligros del mapa:</strong> 💣 bombas explotan al contacto, 🟠 minas dan menos daño pero son menos visibles, 🔴 láseres rojos en las paredes barren el área — esquivá!</p>
-      <p><strong>Combo:</strong> kills consecutivos suben tu streak y dan más XP. ¡Que no te apaguen la racha!</p>
-      <p><strong>Battle Royale:</strong> zona segura se achica. Quedate adentro o sangrás.</p>
-    </div>
-    <button class="btn" id="help-close">Volver</button>
-  </div>
-</div>
-
-<div id="death" class="overlay hidden">
-  <div class="panel">
-    <h2 id="death-title">Te comieron 🪦</h2>
-    <div class="stats">
-      <div><span class="hud-label">Largo</span><strong id="death-length">0</strong></div>
-      <div><span class="hud-label">Kills</span><strong id="death-kills">0</strong></div>
-      <div><span class="hud-label">Streak</span><strong id="death-streak">0</strong></div>
-      <div><span class="hud-label">Mejor</span><strong id="death-best">0</strong></div>
-      <div><span class="hud-label">+XP</span><strong id="death-xp">0</strong></div>
-    </div>
-    <div class="actions">
-      <button class="btn primary" id="death-respawn">🔄 Reintentar</button>
-      <button class="btn" id="death-menu">Menú</button>
-    </div>
-  </div>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script src="game.js"></script>
+<script src="launcher.js"></script>
 </body>
 </html>

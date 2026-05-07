@@ -45,6 +45,13 @@ const POWERUP_SPAWN_TYPES = [
 
 const EMOTES = { '1': '👍', '2': '😂', '3': '😱', '4': '🔥', '5': '👋' };
 
+const DIFFICULTIES = {
+  easy:   { bots: 6,  reactionMul: 1.6, abilityChance: 0.10, evadeBoostChance: 0.15, hazardMul: 0.5, name: 'Fácil',   ico: '🌱', desc: '6 bots tranquilos · pocos peligros' },
+  medium: { bots: 12, reactionMul: 1.0, abilityChance: 0.30, evadeBoostChance: 0.40, hazardMul: 1.0, name: 'Medio',   ico: '⚖️', desc: '12 bots normales · peligros estándar' },
+  hard:   { bots: 18, reactionMul: 0.7, abilityChance: 0.50, evadeBoostChance: 0.70, hazardMul: 1.4, name: 'Difícil', ico: '🔥', desc: '18 bots rápidos · más bombas' },
+  insane: { bots: 25, reactionMul: 0.5, abilityChance: 0.80, evadeBoostChance: 0.95, hazardMul: 1.8, name: 'Insano',  ico: '💀', desc: '25 bots brutales · campo minado' }
+};
+
 const CFG = {
   WORLD_CLASSIC: 4000,
   WORLD_BR: 3500,
@@ -111,7 +118,10 @@ const state = {
   emotes: [], // {x,y,emoji,t,id}
   abilityCdEnd: 0,
   audioOn: localStorage.getItem('snake-audio') !== '0',
-  paused: false
+  paused: false,
+  difficulty: localStorage.getItem('snake-difficulty') || 'medium',
+  joystickAngle: null,    // angulo activo del stick izquierdo o null
+  arrows: { up: false, down: false, left: false, right: false }
 };
 
 // ==================== Audio (Web Audio API) ====================
@@ -177,7 +187,7 @@ function angleLerp(a, b, t) {
   while (d < -Math.PI) d += Math.PI * 2;
   return a + d * t;
 }
-function radiusFor(length) { return 6 + Math.min(20, Math.sqrt(length) * 0.5); }
+function radiusFor(length) { return 10 + Math.min(32, Math.sqrt(length) * 0.85); }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -277,9 +287,10 @@ function spawnWorld() {
     zone: state.room === 'br' ? { x: ws / 2, y: ws / 2, r: ws * 0.7 } : null,
     zoneTimer: 0
   };
-  // bombs y mines iniciales
-  const bombTarget = state.room === 'br' ? 12 : 8;
-  const mineTarget = state.room === 'br' ? 35 : 25;
+  // bombs y mines iniciales (escalan con dificultad)
+  const diffMul = (DIFFICULTIES[state.difficulty] || DIFFICULTIES.medium).hazardMul;
+  const bombTarget = Math.round((state.room === 'br' ? 12 : 8) * diffMul);
+  const mineTarget = Math.round((state.room === 'br' ? 35 : 25) * diffMul);
   for (let i = 0; i < bombTarget; i++) {
     w.bombs.push({ id: w.bombSeq++, x: rand(150, ws - 150), y: rand(150, ws - 150), bornAt: Date.now() });
   }
@@ -313,11 +324,12 @@ function spawnWorld() {
   });
   w.snakes.set(player.id, player);
   state.player = player;
-  // bots
-  const botNames = ['Dante', 'Lucia', 'Rex', 'Mila', 'Zeus', 'Nina', 'Kai', 'Lola', 'Tito', 'Vera', 'Otto', 'Sasha', 'Elsa', 'Bruno'];
+  // bots (cantidad segun dificultad)
+  const diff = DIFFICULTIES[state.difficulty] || DIFFICULTIES.medium;
+  const botNames = ['Dante', 'Lucia', 'Rex', 'Mila', 'Zeus', 'Nina', 'Kai', 'Lola', 'Tito', 'Vera', 'Otto', 'Sasha', 'Elsa', 'Bruno', 'Ari', 'Toni', 'Ema', 'Nico', 'Lupe', 'Bea', 'Hugo', 'Leo', 'Ire', 'Pia', 'Tom'];
   const klassKeys = Object.keys(CLASSES);
   const skinKeys = SKINS;
-  for (let i = 0; i < CFG.BOTS; i++) {
+  for (let i = 0; i < diff.bots; i++) {
     const id = 'bot_' + i;
     const c = COLORS[Math.floor(Math.random() * COLORS.length)];
     const k = klassKeys[Math.floor(Math.random() * klassKeys.length)];
@@ -366,14 +378,16 @@ function ensureShields(w) {
   }
 }
 function ensureBombs(w) {
-  const bombTarget = state.room === 'br' ? 12 : 8;
+  const diffMul = (DIFFICULTIES[state.difficulty] || DIFFICULTIES.medium).hazardMul;
+  const bombTarget = Math.round((state.room === 'br' ? 12 : 8) * diffMul);
   const ws = worldSize();
   while (w.bombs.length < bombTarget) {
     w.bombs.push({ id: w.bombSeq++, x: rand(150, ws - 150), y: rand(150, ws - 150), bornAt: Date.now() });
   }
 }
 function ensureMines(w) {
-  const mineTarget = state.room === 'br' ? 35 : 25;
+  const diffMul = (DIFFICULTIES[state.difficulty] || DIFFICULTIES.medium).hazardMul;
+  const mineTarget = Math.round((state.room === 'br' ? 35 : 25) * diffMul);
   const ws = worldSize();
   while (w.mines.length < mineTarget) {
     w.mines.push({ id: w.mineSeq++, x: rand(80, ws - 80), y: rand(80, ws - 80), bornAt: Date.now() });
@@ -463,23 +477,25 @@ function applyEffect(s, type, durSec) { s.effects[type] = Date.now() + durSec * 
 function hasEffect(s, type) { return (s.effects[type] || 0) > Date.now(); }
 
 function botThink(s, w, dt) {
+  const diff = DIFFICULTIES[state.difficulty] || DIFFICULTIES.medium;
   s.botCooldown -= dt;
   s.botAbilityCooldown -= dt;
 
-  // intentar habilidad cada tanto
+  // intentar habilidad segun dificultad
   if (s.botAbilityCooldown <= 0 && Date.now() > s.abilityCdEnd) {
-    if (Math.random() < 0.3) executeAbilitySP(w, s);
-    s.botAbilityCooldown = rand(8, 18);
+    if (Math.random() < diff.abilityChance) executeAbilitySP(w, s);
+    s.botAbilityCooldown = rand(8, 18) * diff.reactionMul;
   }
 
-  // evasion
+  // evasion (radio mayor en niveles altos)
+  const evadeRadius = 90 / Math.max(0.6, diff.reactionMul);
   let evade = null, evadeDist = 1e9;
   for (const o of w.snakes.values()) {
     if (o === s || !o.alive) continue;
     if (hasEffect(s, 'phantom')) continue;
     const dx = o.x - s.x, dy = o.y - s.y;
     const d2 = dx * dx + dy * dy;
-    const danger = 90 + radiusFor(o.length);
+    const danger = evadeRadius + radiusFor(o.length);
     if (d2 < danger * danger) {
       const facing = Math.cos(o.angle) * (-dx) + Math.sin(o.angle) * (-dy);
       if (facing > 0 && d2 < evadeDist) { evadeDist = d2; evade = o; }
@@ -488,7 +504,7 @@ function botThink(s, w, dt) {
   if (evade) {
     const away = Math.atan2(s.y - evade.y, s.x - evade.x);
     s.targetAngle = away + (Math.random() - 0.5) * 0.6;
-    s.boosting = Math.random() < 0.4 && (s.length > CFG.START_LENGTH + 4 || hasEffect(s, 'frenzy'));
+    s.boosting = Math.random() < diff.evadeBoostChance && (s.length > CFG.START_LENGTH + 4 || hasEffect(s, 'frenzy'));
     return;
   }
 
@@ -524,7 +540,7 @@ function botThink(s, w, dt) {
     return;
   }
 
-  // comida
+  // comida (cooldown de busqueda escala con dificultad)
   if (s.botCooldown <= 0 || !s.botGoal) {
     let best = null, bestD = 1e9;
     for (let i = 0; i < w.food.length; i += 3) {
@@ -534,7 +550,7 @@ function botThink(s, w, dt) {
       if (d < bestD) { bestD = d; best = f; }
     }
     s.botGoal = best;
-    s.botCooldown = 0.3 + Math.random() * 0.5;
+    s.botCooldown = (0.3 + Math.random() * 0.5) * diff.reactionMul;
   }
   if (s.botGoal) {
     s.targetAngle = Math.atan2(s.botGoal.y - s.y, s.botGoal.x - s.x) + (Math.random() - 0.5) * 0.1;
@@ -963,6 +979,20 @@ function loop(now) {
 requestAnimationFrame(loop);
 
 function updateInputAngle() {
+  // prioridad: joystick > flechas/WASD > mouse
+  if (state.joystickAngle !== null) {
+    state.input.angle = state.joystickAngle;
+    return;
+  }
+  let dx = 0, dy = 0;
+  if (state.arrows.up) dy -= 1;
+  if (state.arrows.down) dy += 1;
+  if (state.arrows.left) dx -= 1;
+  if (state.arrows.right) dx += 1;
+  if (dx !== 0 || dy !== 0) {
+    state.input.angle = Math.atan2(dy, dx);
+    return;
+  }
   const cx = viewport.w / 2;
   const cy = viewport.h / 2;
   state.input.angle = Math.atan2(state.mouse.y - cy, state.mouse.x - cx);
@@ -1788,16 +1818,44 @@ function onPlayerDied(serverData) {
   deathOverlay.classList.remove('hidden');
 }
 
-document.getElementById('death-respawn').addEventListener('click', () => {
+// Continuar = mismo mundo, jugador renace en posición aleatoria (en SP no resetea bots ni comida)
+document.getElementById('death-continue').addEventListener('click', () => {
+  deathOverlay.classList.add('hidden');
+  if (state.mode === 'single') {
+    if (!state.world) {
+      state.world = spawnWorld();
+    } else {
+      // borrar el cadaver del jugador y respawnear uno nuevo
+      const oldPlayer = state.player;
+      if (oldPlayer) state.world.snakes.delete(oldPlayer.id);
+      const fresh = createSnake({
+        id: 'me', name: state.name, color: state.color, skin: state.skin,
+        klass: state.klass, isBot: false
+      });
+      state.world.snakes.set(fresh.id, fresh);
+      state.player = fresh;
+    }
+    state.camera.x = state.player.x - viewport.w / 2;
+    state.camera.y = state.player.y - viewport.h / 2;
+    state.particles = [];
+  } else {
+    state.socket.emit('respawn', { name: state.name, color: state.color, skin: state.skin, klass: state.klass });
+  }
+});
+
+// Nuevo juego = reset completo del mundo (en MP es lo mismo que respawn)
+document.getElementById('death-newgame').addEventListener('click', () => {
   deathOverlay.classList.add('hidden');
   if (state.mode === 'single') {
     state.world = spawnWorld();
     state.camera.x = state.player.x - viewport.w / 2;
     state.camera.y = state.player.y - viewport.h / 2;
+    state.particles = [];
   } else {
     state.socket.emit('respawn', { name: state.name, color: state.color, skin: state.skin, klass: state.klass });
   }
 });
+
 document.getElementById('death-menu').addEventListener('click', () => {
   deathOverlay.classList.add('hidden');
   stopGame();
@@ -1865,6 +1923,33 @@ Object.entries(CLASSES).forEach(([key, def]) => {
   });
   classesContainer.appendChild(card);
 });
+
+// Selector de dificultad
+const diffContainer = document.getElementById('difficulty');
+Object.entries(DIFFICULTIES).forEach(([key, def]) => {
+  const card = document.createElement('div');
+  card.className = 'diff-card' + (key === state.difficulty ? ' active' : '');
+  card.dataset.d = key;
+  card.innerHTML = `<div class="ico">${def.ico}</div><div class="nm">${def.name}</div><div class="ds">${def.desc}</div>`;
+  card.addEventListener('click', () => {
+    state.difficulty = key;
+    localStorage.setItem('snake-difficulty', key);
+    document.querySelectorAll('.diff-card').forEach(el => el.classList.remove('active'));
+    card.classList.add('active');
+  });
+  diffContainer.appendChild(card);
+});
+
+// Boton de ayuda en juego
+document.getElementById('btn-ingame-help').addEventListener('click', () => {
+  helpModal.classList.remove('hidden');
+});
+
+// Mostrar ayuda automaticamente la primera vez que se entra
+if (!localStorage.getItem('snake-seen-help')) {
+  helpModal.classList.remove('hidden');
+  localStorage.setItem('snake-seen-help', '1');
+}
 
 document.querySelectorAll('#menu .mode-card').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -2031,6 +2116,12 @@ canvas.addEventListener('touchmove', (e) => {
 }, { passive: false });
 canvas.addEventListener('touchend', () => { state.input.boost = false; });
 
+// Flechas y WASD
+const ARROW_KEYS = {
+  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+  w: 'up', W: 'up', s: 'down', S: 'down', a: 'left', A: 'left', d: 'right', D: 'right'
+};
+
 window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') { e.preventDefault(); state.input.boost = true; }
   if (e.key === 'Escape' && state.running) {
@@ -2044,13 +2135,114 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     togglePause();
   }
-  // emotes
   if (state.running && EMOTES[e.key]) {
     sendEmote(EMOTES[e.key]);
+  }
+  // arrows / wasd
+  if (ARROW_KEYS[e.key]) {
+    e.preventDefault();
+    state.arrows[ARROW_KEYS[e.key]] = true;
   }
 });
 window.addEventListener('keyup', (e) => {
   if (e.code === 'Space') state.input.boost = false;
+  if (ARROW_KEYS[e.key]) state.arrows[ARROW_KEYS[e.key]] = false;
+});
+
+// ==================== Joysticks virtuales ====================
+function bindJoystick(elBase, options = {}) {
+  const elThumb = elBase.querySelector('.joy-thumb');
+  let pointerId = null;
+  let centerX = 0, centerY = 0;
+  let baseRadius = 0;
+  let maxOffset = 0;
+
+  function recalcBase() {
+    const rect = elBase.getBoundingClientRect();
+    centerX = rect.left + rect.width / 2;
+    centerY = rect.top + rect.height / 2;
+    baseRadius = rect.width / 2;
+    maxOffset = baseRadius - elThumb.offsetWidth / 4;
+  }
+
+  function start(id, x, y) {
+    if (pointerId !== null) return false;
+    recalcBase();
+    pointerId = id;
+    elBase.classList.add('dragging', 'active');
+    move(x, y, true);
+    if (options.onStart) options.onStart();
+    return true;
+  }
+  function move(x, y, isFirst = false) {
+    let dx = x - centerX, dy = y - centerY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxOffset) {
+      dx = (dx / dist) * maxOffset;
+      dy = (dy / dist) * maxOffset;
+    }
+    elThumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    if (options.onMove) options.onMove(dx, dy, dist, isFirst);
+  }
+  function end() {
+    if (pointerId === null) return;
+    pointerId = null;
+    elBase.classList.remove('dragging', 'active');
+    elThumb.style.transform = 'translate(-50%, -50%)';
+    if (options.onEnd) options.onEnd();
+  }
+
+  elBase.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    if (start(t.identifier, t.clientX, t.clientY)) {
+      e.stopPropagation();
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchmove', (e) => {
+    if (pointerId === null) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier === pointerId) { move(t.clientX, t.clientY); break; }
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (pointerId === null) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier === pointerId) { end(); break; }
+    }
+  });
+
+  elBase.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (start('mouse', e.clientX, e.clientY)) {
+      const onMove = (ev) => move(ev.clientX, ev.clientY);
+      const onUp = () => {
+        end();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+  });
+}
+
+// stick izquierdo: direccion
+bindJoystick(document.getElementById('joy-left'), {
+  onMove(dx, dy, dist) {
+    if (dist > 8) state.joystickAngle = Math.atan2(dy, dx);
+    else state.joystickAngle = null;
+  },
+  onEnd() { state.joystickAngle = null; }
+});
+
+// stick derecho: boost
+bindJoystick(document.getElementById('joy-right'), {
+  onStart() { state.input.boost = true; if (state.running) playSound('boost'); },
+  onEnd() { state.input.boost = false; }
 });
 
 function fireAbility() {

@@ -81,6 +81,22 @@ h2 { margin: 0 0 16px; }
 
 .subtitle { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
 
+.back-link {
+  display: inline-block;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  margin-bottom: 14px;
+  transition: color .15s, border-color .15s;
+  font-weight: 600;
+}
+.back-link:hover { color: var(--accent); border-color: var(--accent); }
+
 .config-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -355,12 +371,98 @@ kbd {
 
 #minimap {
   position: absolute;
-  bottom: 14px; right: 14px;
+  bottom: 175px; right: 14px;
   border: 1px solid var(--panel-border);
   border-radius: 12px;
   background: rgba(10, 13, 24, 0.7);
   backdrop-filter: blur(8px);
 }
+
+/* ===== Virtual joysticks ===== */
+.joystick {
+  position: absolute;
+  width: 130px; height: 130px;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#joy-left { bottom: 28px; left: 28px; }
+#joy-right { bottom: 28px; right: 28px; }
+.joy-base {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(94, 142, 255, 0.18), rgba(10, 13, 24, 0.55));
+  border: 2px solid rgba(110, 130, 200, 0.35);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), inset 0 0 24px rgba(94, 142, 255, 0.12);
+  backdrop-filter: blur(10px);
+  transition: border-color .15s, box-shadow .15s;
+}
+.joystick.active .joy-base {
+  border-color: var(--accent);
+  box-shadow: 0 8px 30px rgba(94, 255, 182, 0.25), inset 0 0 28px rgba(94, 255, 182, 0.18);
+}
+#joy-right.active .joy-base {
+  border-color: var(--gold);
+  box-shadow: 0 8px 30px rgba(255, 215, 94, 0.3), inset 0 0 28px rgba(255, 215, 94, 0.18);
+}
+.joy-thumb {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(180, 200, 240, 0.7));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), inset 0 -4px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  transition: transform .12s ease-out;
+}
+.joystick.dragging .joy-thumb { transition: none; }
+#joy-right .joy-thumb {
+  background: linear-gradient(160deg, #ffe79a, #ffb84a);
+}
+.joy-tag {
+  position: absolute;
+  bottom: -22px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* ===== Difficulty selector ===== */
+.diff-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+@media (max-width: 600px) { .diff-grid { grid-template-columns: repeat(2, 1fr); } }
+.diff-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+}
+.diff-card:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.08); }
+.diff-card .ico { font-size: 20px; }
+.diff-card .nm { font-weight: 700; font-size: 13px; margin-top: 4px; }
+.diff-card .ds { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.diff-card.active {
+  border-color: var(--gold);
+  background: rgba(255, 215, 94, 0.08);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+.diff-card[data-d="easy"].active   { border-color: #5effb6; box-shadow: 0 0 0 1px #5effb6; }
+.diff-card[data-d="medium"].active { border-color: #5e8eff; box-shadow: 0 0 0 1px #5e8eff; }
+.diff-card[data-d="hard"].active   { border-color: #ffb35e; box-shadow: 0 0 0 1px #ffb35e; }
+.diff-card[data-d="insane"].active { border-color: #ff5e7a; box-shadow: 0 0 0 1px #ff5e7a; }
+
+.hint-inline { color: var(--muted); font-size: 10px; text-transform: none; letter-spacing: 0; margin-left: 6px; font-weight: 400; }
 
 #effects-stack {
   position: absolute;
@@ -393,7 +495,7 @@ kbd {
 
 #ability-bar {
   position: absolute;
-  bottom: 14px; left: 14px;
+  bottom: 175px; left: 14px;
   display: flex; align-items: center; gap: 12px;
 }
 .ability-circle {
@@ -444,7 +546,7 @@ kbd {
 
 #emote-hint {
   position: absolute;
-  bottom: 14px;
+  bottom: 175px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(10, 13, 24, 0.6);
@@ -454,7 +556,12 @@ kbd {
   font-size: 11px;
   color: var(--muted);
   backdrop-filter: blur(8px);
+  white-space: nowrap;
+  max-width: calc(100vw - 320px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+@media (max-width: 700px) { #emote-hint { display: none; } }
 
 #combo-burst {
   position: absolute;

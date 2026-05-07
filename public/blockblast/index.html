@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Block Blast</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <a class="back-link" href="/">← Arcade</a>
+  <h1>BLOCK <span class="accent">BLAST</span></h1>
+  <button id="btn-help" class="topbar-btn" title="Ayuda">❓</button>
+</header>
+
+<main id="stage">
+  <div id="hud">
+    <div class="stat"><span class="lbl">Score</span><span class="val" id="hud-score">0</span></div>
+    <div class="stat"><span class="lbl">Combo</span><span class="val" id="hud-combo">x1</span></div>
+    <div class="stat"><span class="lbl">Mejor</span><span class="val" id="hud-best">0</span></div>
+  </div>
+  <canvas id="board"></canvas>
+  <div id="tray"></div>
+  <div id="kb-hint" class="hint">
+    Mouse / Touch: arrastrá las piezas. Teclado: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> elegir · <kbd>↑↓←→</kbd> mover · <kbd>Enter</kbd>/<kbd>Espacio</kbd> colocar · <kbd>R</kbd> rotar
+  </div>
+</main>
+
+<div id="help-modal" class="overlay hidden">
+  <div class="panel">
+    <h2>Cómo jugar</h2>
+    <ul class="bullets">
+      <li>Arrastrá piezas desde la bandeja al tablero de 8×8.</li>
+      <li>Llená filas o columnas completas para reventarlas y sumar puntos.</li>
+      <li>Reventar más de una en el mismo turno = combo (multiplicador x2, x3...).</li>
+      <li>Si ninguna de las 3 piezas entra en ningún lado: game over.</li>
+      <li>Con teclado: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> elegir pieza · <kbd>↑ ↓ ← →</kbd> mover el cursor · <kbd>R</kbd> rotar · <kbd>Enter</kbd> colocar.</li>
+    </ul>
+    <button class="btn primary" id="help-close">Entendido</button>
+  </div>
+</div>
+
+<div id="gameover" class="overlay hidden">
+  <div class="panel">
+    <h2>🎯 Game Over</h2>
+    <div class="stats">
+      <div><span class="lbl">Score</span><strong id="go-score">0</strong></div>
+      <div><span class="lbl">Mejor</span><strong id="go-best">0</strong></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="go-replay">🔄 Otra partida</button>
+      <button class="btn" id="go-menu">Menú</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

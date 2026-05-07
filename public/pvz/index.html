@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Plants vs Zombies</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <a class="back-link" href="/">← Arcade</a>
+  <h1>PLANTS vs <span class="accent">ZOMBIES</span></h1>
+  <button id="btn-help" class="topbar-btn" title="Ayuda">❓</button>
+</header>
+
+<main id="stage">
+  <div id="topbar2">
+    <div class="sun-counter">
+      <span class="sun-emoji">☀️</span>
+      <span id="sun-amount">100</span>
+    </div>
+    <div id="shop"></div>
+    <div class="wave-info">
+      <div class="lbl">Oleada</div>
+      <div class="val" id="wave-num">1</div>
+    </div>
+    <button class="topbar-btn" id="btn-pause" title="Pausa (P)">⏸</button>
+  </div>
+  <canvas id="board"></canvas>
+  <div class="hint">
+    <strong>Click</strong> en una planta del shop, después <strong>click</strong> en una celda. Recogé el sol ☀️ que cae. Teclado: <kbd>1</kbd>-<kbd>5</kbd> seleccionar · <kbd>↑↓←→</kbd> mover cursor · <kbd>Espacio</kbd> plantar · <kbd>P</kbd> pausa
+  </div>
+</main>
+
+<div id="help-modal" class="overlay hidden">
+  <div class="panel">
+    <h2>Cómo jugar</h2>
+    <p class="info">Defendé tu jardín de las hordas de zombies que llegan por la derecha. ¡No los dejes cruzar a tu casa!</p>
+    <h3>Plantas</h3>
+    <ul class="bullets">
+      <li>🌻 <strong>Sunflower</strong> (50 ☀️) — genera sol cada 12s</li>
+      <li>🌱 <strong>Peashooter</strong> (100 ☀️) — dispara guisantes</li>
+      <li>🌰 <strong>Wallnut</strong> (50 ☀️) — bloquea con mucha vida</li>
+      <li>❄️ <strong>Snow Pea</strong> (175 ☀️) — dispara y frena al zombie</li>
+      <li>💣 <strong>Cherry Bomb</strong> (150 ☀️) — explota en área tras 1.5s</li>
+    </ul>
+    <h3>Zombies</h3>
+    <ul class="bullets">
+      <li>🧟 <strong>Normal</strong> — 80 HP</li>
+      <li>🦺 <strong>Cono</strong> — 200 HP, igual de rápido</li>
+      <li>🪣 <strong>Balde</strong> — 400 HP, más resistente</li>
+    </ul>
+    <p class="info">El sol cae del cielo cada 8s y los girasoles también lo generan. Cliquealo para recogerlo.</p>
+    <button class="btn primary" id="help-close">Entendido</button>
+  </div>
+</div>
+
+<div id="gameover" class="overlay hidden">
+  <div class="panel">
+    <h2 id="go-title">Los zombies te comieron 🧟</h2>
+    <div class="stats">
+      <div><span class="lbl">Oleada</span><strong id="go-wave">1</strong></div>
+      <div><span class="lbl">Zombies</span><strong id="go-zombies">0</strong></div>
+      <div><span class="lbl">Mejor</span><strong id="go-best">0</strong></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="go-replay">🔄 Otra</button>
+      <button class="btn" id="go-menu">Menú</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause-overlay" class="hidden">
+  <div class="pause-card">
+    <div class="pause-title">⏸ PAUSA</div>
+    <button class="btn primary" id="btn-resume">▶ Reanudar</button>
+    <button class="btn" id="btn-pause-menu">Menú</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
