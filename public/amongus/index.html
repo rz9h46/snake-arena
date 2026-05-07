@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Among Us — Impostor</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <a class="back-link" href="/">← Arcade</a>
+  <h1>AMONG <span class="accent">US</span></h1>
+  <button id="btn-help" class="topbar-btn" title="Ayuda">❓</button>
+</header>
+
+<main id="stage">
+  <div id="hud" class="hidden">
+    <div class="stat"><span class="lbl">Vivos</span><span class="val" id="hud-alive">7</span></div>
+    <div class="stat"><span class="lbl">Tareas crew</span><span class="val" id="hud-tasks">0%</span></div>
+    <div class="stat sus"><span class="lbl">Sospecha</span><span class="val" id="hud-sus">0</span></div>
+    <div class="stat kill-cd" id="kill-pill"><span class="lbl">Kill</span><span class="val" id="hud-kill-cd">LISTO</span></div>
+  </div>
+
+  <canvas id="game"></canvas>
+
+  <div id="actions" class="hidden">
+    <button class="action-btn kill" id="btn-kill">🔪 KILL</button>
+    <button class="action-btn vent" id="btn-vent">🕳 VENT</button>
+    <button class="action-btn report" id="btn-report">📢 REPORT</button>
+    <button class="action-btn emerg" id="btn-emerg">🚨 EMERGENCIA</button>
+  </div>
+
+  <div class="hint">
+    <kbd>WASD</kbd>/<kbd>↑↓←→</kbd> mover · <kbd>Espacio</kbd> kill · <kbd>E</kbd> vent · <kbd>R</kbd> reportar · <kbd>Q</kbd> meeting
+  </div>
+</main>
+
+<div id="menu" class="overlay">
+  <div class="panel">
+    <h2>AMONG <span class="accent2">US</span></h2>
+    <p class="subtitle">Sos el impostor 🔪. 6 crewmates haciendo tareas. Matalos a todos sin que te descubran. Si te votan en una meeting, perdiste.</p>
+    <div class="actions">
+      <button class="btn primary" id="btn-start">▶ Empezar</button>
+      <button class="btn ghost" id="btn-help-open">❓ Cómo jugar</button>
+    </div>
+  </div>
+</div>
+
+<div id="help-modal" class="overlay hidden">
+  <div class="panel">
+    <h2>🔪 Cómo jugar</h2>
+    <ul class="bullets">
+      <li><strong>Movete</strong> con WASD/flechas o joystick táctil. Sos el rojo.</li>
+      <li><strong>Matá</strong> con Espacio o botón <em>KILL</em> cuando estés cerca de un crewmate. Cooldown 25s.</li>
+      <li><strong>Vents</strong>: pisá uno (los círculos rosados) y apretá <em>VENT</em> o <kbd>E</kbd> para teleportarte a otro vent. Crewmates no usan vents.</li>
+      <li><strong>Cuerpos</strong>: si un crewmate encuentra un cadáver, llama meeting automáticamente.</li>
+      <li><strong>Reportar</strong>: vos también podés reportar un cuerpo (botón o <kbd>R</kbd>) para desviar sospechas.</li>
+      <li><strong>Emergencia</strong>: cualquiera puede llamar meeting desde el botón rojo en la cafetería (<kbd>Q</kbd>).</li>
+      <li><strong>Votación</strong>: los bots votan según <em>sospecha</em>. Subís sospecha si te ven cerca de cuerpos, en vents, o si los crewmates ven gente desaparecer cerca tuyo.</li>
+      <li><strong>Ganás</strong> matando a 5 (queda solo 1 vivo) o sobreviviendo todas las votaciones.</li>
+      <li><strong>Perdés</strong> si te votan en meeting, o si los crewmates terminan todas sus tareas.</li>
+    </ul>
+    <button class="btn primary" id="help-close">Listo</button>
+  </div>
+</div>
+
+<div id="meeting-overlay" class="overlay hidden">
+  <div class="panel wide">
+    <h2 id="meeting-title">📢 EMERGENCY MEETING</h2>
+    <div id="meeting-body-area"></div>
+    <div id="meeting-discussion" class="meeting-info">Discusión en curso...</div>
+    <div id="vote-grid"></div>
+    <div id="vote-results" class="hidden"></div>
+    <div class="actions">
+      <button class="btn ghost" id="btn-skip-vote">⏭ Skip vote</button>
+      <button class="btn ghost hidden" id="btn-meeting-continue">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<div id="gameover" class="overlay hidden">
+  <div class="panel">
+    <h2 id="go-title">Game Over</h2>
+    <p id="go-reason" class="subtitle">—</p>
+    <div class="stats-grid">
+      <div><span class="lbl">Kills</span><strong id="go-kills">0</strong></div>
+      <div><span class="lbl">Tiempo</span><strong id="go-time">0:00</strong></div>
+      <div><span class="lbl">Mejor</span><strong id="go-best">—</strong></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="go-replay">🔄 Otra ronda</button>
+      <button class="btn" id="go-menu">Menú</button>
+    </div>
+  </div>
+</div>
+
+<div id="task-progress" class="task-overlay hidden">
+  <div class="task-panel">
+    <h3 id="task-name">Tarea</h3>
+    <div class="task-bar"><div class="task-fill" id="task-fill"></div></div>
+    <p class="task-info">Estás simulando una tarea. Apretá <kbd>Esc</kbd> para cancelar.</p>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
