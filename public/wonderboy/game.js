@@ -45,16 +45,20 @@ const state = {
   score: 0,
   best: parseInt(localStorage.getItem('wb-best') || '0', 10),
   vitality: 100,
-  vitalityDecay: 1.5,    // /seg
+  vitalityDecay: 1.5,
   lives: 3,
-  // mundo: chunks con suelo, pozos, enemigos, frutas
-  ground: [],            // segments [x1, x2] de piso
-  pits: [],              // segments [x1, x2] de pozo
-  enemies: [],           // {x, y, kind, vy, alive}
-  fruits: [],            // {x, y, kind, taken}
+  ground: [],
+  pits: [],
+  enemies: [],
+  fruits: [],
   particles: [],
-  worldEnd: 0            // x mas lejano generado
+  worldEnd: 0,
+  axes: [],            // hachas en vuelo {x, y, vx, vy, rot, alive}
+  skateboards: [],     // patinetas pickup en el mundo {x, y, taken}
+  skating: false,
+  skateTimer: 0
 };
+const SKATE_DUR = 12;       // segundos de patineta
 
 // FRUIT_KINDS se define más abajo como FRUIT_LIST (con sprites)
 const FRUIT_KINDS_NAMES = ['apple', 'banana', 'grape', 'peach', 'cherry'];
@@ -88,6 +92,10 @@ function resetWorld() {
   state.enemies = [];
   state.fruits = [];
   state.particles = [];
+  state.axes = [];
+  state.skateboards = [];
+  state.skating = false;
+  state.skateTimer = 0;
   state.scrollX = 0;
   state.distance = 0;
   state.score = 0;
@@ -103,7 +111,6 @@ function resetWorld() {
   state.player.invul = 0;
   state.alive = true;
   state.worldEnd = 0;
-  // primer chunk de suelo seguro
   state.ground.push([0, viewport.w * 1.5]);
   state.worldEnd = viewport.w * 1.5;
   generateAhead();
@@ -150,6 +157,14 @@ function generateAhead() {
             taken: false
           });
         }
+      }
+      // patineta ocasional (solo si no hay skating activo, raro pero buenísimo)
+      if (!state.skating && Math.random() < 0.08 && state.distance > 400) {
+        state.skateboards.push({
+          x: startX + groundW * 0.5,
+          y: floorY() - 8,
+          taken: false
+        });
       }
     }
   }
@@ -226,26 +241,31 @@ function tryJump() {
 
 function tryAttack() {
   if (state.player.attackTimer > 0) return;
-  state.player.attackTimer = 0.3;
+  state.player.attackTimer = 0.25;
   beep('hit');
-  // aniquilar enemigos al alcance al frente
-  for (const e of state.enemies) {
-    if (!e.alive) continue;
-    const dx = e.x - state.player.x;
-    const dy = e.y - state.player.y;
-    if (dx > -10 && dx < ATTACK_RANGE && Math.abs(dy) < 50) {
-      e.alive = false;
-      state.score += 100;
-      spawnParticles(e.x, e.y, 14, '#ffd75e');
-    }
-  }
+  // tirar hacha de piedra con arco
+  state.axes.push({
+    x: state.scrollX + state.player.x + 14,
+    y: state.player.y - 4,
+    vx: 460,
+    vy: -180,
+    rot: 0,
+    alive: true
+  });
 }
 
 // ==================== Update ====================
 function update(dt) {
+  // skating boost + timer
+  let speedMul = 1;
+  if (state.skating) {
+    state.skateTimer -= dt;
+    speedMul = 1.55;
+    if (state.skateTimer <= 0) state.skating = false;
+  }
   // scroll
-  state.scrollX += state.speed * dt;
-  state.distance += state.speed * dt;
+  state.scrollX += state.speed * speedMul * dt;
+  state.distance += state.speed * speedMul * dt;
   state.speed = Math.min(RUN_SPEED * 1.7, RUN_SPEED + state.distance * 0.02);
   // generar mas mundo si hace falta
   generateAhead();
@@ -254,6 +274,8 @@ function update(dt) {
   state.pits = state.pits.filter(([a, b]) => b > state.scrollX - 200);
   state.enemies = state.enemies.filter(e => e.x > state.scrollX - 200 && e.alive);
   state.fruits = state.fruits.filter(f => f.x > state.scrollX - 200 && !f.taken);
+  state.skateboards = state.skateboards.filter(sb => sb.x > state.scrollX - 200 && !sb.taken);
+  state.axes = state.axes.filter(a => a.alive && a.x < state.scrollX + viewport.w + 80 && a.y < floorY() + 30);
 
   // jugador
   const p = state.player;
@@ -312,6 +334,16 @@ function update(dt) {
           p.vy = JUMP_VEL * 0.6;
           spawnParticles(e.x - state.scrollX, e.y, 12, '#ffd75e');
           beep('stomp');
+        } else if (state.skating) {
+          // la patineta absorbe el golpe: se rompe + matas al enemigo + brief invul
+          state.skating = false;
+          state.skateTimer = 0;
+          e.alive = false;
+          p.invul = 1.2;
+          spawnParticles(p.x, p.y, 25, '#ffd75e');
+          spawnParticles(p.x, p.y + 10, 10, '#cc2222');
+          beep('hurt');
+          break;
         } else {
           loseLife('enemigo');
           break;
@@ -330,6 +362,41 @@ function update(dt) {
       state.vitality = Math.min(100, state.vitality + f.kind.vit);
       spawnParticles(fx, f.y, 10, '#5effb6');
       beep('fruit');
+    }
+  }
+
+  // recolectar patinetas
+  for (const sb of state.skateboards) {
+    if (sb.taken) continue;
+    const sx = sb.x - state.scrollX;
+    if (Math.abs(sx - p.x) < 28 && Math.abs(sb.y - p.y) < 32) {
+      sb.taken = true;
+      state.skating = true;
+      state.skateTimer = SKATE_DUR;
+      spawnParticles(sx, sb.y, 24, '#ffd75e');
+      beep('fruit');
+    }
+  }
+
+  // mover hachas y detectar hits
+  for (const a of state.axes) {
+    if (!a.alive) continue;
+    a.vy += GRAVITY * 0.55 * dt;
+    a.x += a.vx * dt;
+    a.y += a.vy * dt;
+    a.rot += dt * 18;
+    if (a.y > floorY() + 10) { a.alive = false; continue; }
+    // hit enemies
+    for (const e of state.enemies) {
+      if (!e.alive) continue;
+      if (Math.abs(a.x - e.x) < 16 && Math.abs(a.y - e.y) < 22) {
+        e.alive = false;
+        state.score += 100;
+        spawnParticles(e.x - state.scrollX, e.y, 14, '#ffd75e');
+        a.alive = false;
+        beep('stomp');
+        break;
+      }
     }
   }
 
@@ -724,10 +791,92 @@ function render() {
   drawMountainsParallax();
   drawPalmsParallax();
   drawTerrain();
+  drawSkateboardPickups();
   drawFruits();
   drawEnemies();
   drawPlayer();
+  drawAxes();
   drawParticles();
+  drawSkateHud();
+}
+
+function drawSkateboardSprite(x, y, scale = 1) {
+  // deck rojo con franjas
+  ctx.fillStyle = '#cc2222';
+  ctx.fillRect(x - 16 * scale, y - 4 * scale, 32 * scale, 5 * scale);
+  ctx.fillStyle = '#ee3838';
+  ctx.fillRect(x - 16 * scale, y - 4 * scale, 32 * scale, 1 * scale);
+  ctx.fillStyle = '#a01a1a';
+  ctx.fillRect(x - 16 * scale, y, 32 * scale, 1 * scale);
+  // detalle: rayo amarillo en el centro
+  ctx.fillStyle = '#fcd820';
+  ctx.fillRect(x - 4 * scale, y - 3 * scale, 8 * scale, 2 * scale);
+  // ruedas
+  ctx.fillStyle = '#fcd820';
+  ctx.beginPath();
+  ctx.arc(x - 11 * scale, y + 4 * scale, 3.5 * scale, 0, Math.PI * 2);
+  ctx.arc(x + 11 * scale, y + 4 * scale, 3.5 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  // ejes
+  ctx.fillStyle = '#3a3a3a';
+  ctx.fillRect(x - 12 * scale, y + 1 * scale, 4 * scale, 2 * scale);
+  ctx.fillRect(x + 8 * scale, y + 1 * scale, 4 * scale, 2 * scale);
+}
+
+function drawSkateboardPickups() {
+  for (const sb of state.skateboards) {
+    if (sb.taken) continue;
+    const x = sb.x - state.scrollX;
+    if (x < -50 || x > viewport.w + 50) continue;
+    const bob = Math.sin(performance.now() * 0.006 + sb.x * 0.02) * 3;
+    // brillo
+    if (Math.floor(performance.now() / 240) % 2 === 0) {
+      ctx.fillStyle = 'rgba(255, 215, 94, 0.4)';
+      ctx.beginPath();
+      ctx.arc(x, sb.y + bob, 22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    drawSkateboardSprite(x, sb.y + bob, 1);
+    // estrella indicando que es pickup
+    if (Math.floor(performance.now() / 200) % 2 === 0) {
+      ctx.fillStyle = '#ffd75e';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('★', x, sb.y - 14 + bob);
+    }
+  }
+}
+
+function drawAxes() {
+  for (const a of state.axes) {
+    if (!a.alive) continue;
+    const x = a.x - state.scrollX;
+    const y = a.y;
+    if (x < -20 || x > viewport.w + 20) continue;
+    const sw = AXE_PROJECTILE[0].length * 2;
+    const sh = AXE_PROJECTILE.length * 2;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(a.rot);
+    drawSprite(AXE_PROJECTILE, AXE_PAL, -sw / 2, -sh / 2, 2);
+    ctx.restore();
+  }
+}
+
+function drawSkateHud() {
+  if (!state.skating) return;
+  // barra arriba a la izquierda mostrando tiempo restante
+  const ratio = clamp(state.skateTimer / SKATE_DUR, 0, 1);
+  const x = viewport.w / 2 - 60;
+  const y = 12;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(x, y, 120, 14);
+  ctx.fillStyle = '#cc2222';
+  ctx.fillRect(x + 1, y + 1, 118 * ratio, 12);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🛹 PATINETA', x + 60, y + 11);
 }
 
 function drawSky() {
@@ -936,7 +1085,10 @@ function drawPlayer() {
   }
   // elegir sprite
   let sprite;
-  if (p.attackTimer > 0) {
+  if (state.skating) {
+    // En patineta: pose con piernas semi-flexionadas (uso JUMP que tiene piernas dobladas)
+    sprite = HERO_JUMP;
+  } else if (p.attackTimer > 0) {
     sprite = HERO_ATTACK;
   } else if (!p.onGround) {
     sprite = HERO_JUMP;
@@ -945,7 +1097,19 @@ function drawPlayer() {
     sprite = tick ? HERO_RUN_A : HERO_RUN_B;
   }
   const w = sprite[0].length * PIX, h = sprite.length * PIX;
-  drawSprite(sprite, HERO_PAL, p.x - w / 2, p.y - h / 2 - 6, PIX);
+  // si está en patineta, dibujamos primero la patineta y subimos al nene
+  let yOffset = -6;
+  if (state.skating) {
+    drawSkateboardSprite(p.x, floorY() - 4, 1);
+    yOffset = -16; // subimos al pibe encima de la deck
+    // halo de velocidad detrás
+    ctx.fillStyle = 'rgba(255, 215, 94, 0.4)';
+    for (let i = 0; i < 3; i++) {
+      const t = (performance.now() * 0.01 + i * 0.3) % 1;
+      ctx.fillRect(p.x - 30 - t * 30, p.y - 8 + i * 6, 16, 2);
+    }
+  }
+  drawSprite(sprite, HERO_PAL, p.x - w / 2, p.y - h / 2 + yOffset, PIX);
 }
 
 function drawParticles() {
