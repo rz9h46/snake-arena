@@ -422,107 +422,115 @@ const HERO_PAL = {
   'w': '#ffffff'
 };
 
-// Hero corriendo - frame A (pierna izquierda adelante)
+// Hero en perfil lateral (mirando a la derecha). Wonderboy clásico.
+// 14x18, paleta: H=pelo, r=rojo banda/oscuro, R=rojo brillante,
+// s=piel, S=piel sombra, b=azul oscuro short, B=azul brillante,
+// y=amarillo cinto, k=outline.
+
+// Frame A: pie derecho adelante, brazo derecho atrás (corriendo)
 const HERO_RUN_A = [
-  "....kkkkkkk....",
-  "...kHHHHHHHk...",
-  "..kHHHHHHHHHk..",
-  "..kHrrrrrrrHk..",
-  "..kHrRRRRRrHk..",
-  "..kssssssskk...",
-  "..ksksskssk....",   // ojos
-  "..ksssssssk....",
-  "...ksksskk.....",   // boca
-  "....ksssk......",
-  "....rRRRRr.....",
-  "...rRRRRRRr....",
-  "..srRRRRRRrs...",   // hombros con brazos
-  "..srRRyRRRrs...",   // pecho
-  "..srRRyRRRrs...",
-  "...rRRyRRr.....",
-  "....bbbbb......",   // shorts
-  "...bBBBBBb.....",
-  "...bBBBBBb.....",
-  "...sss.sss.....",   // piernas
-  "...kss.ssk.....",
-  "..kkk....kkk...",   // pies
+  "....HHHHHHk...",   // 0  pelo arriba
+  "...HHHHHHHk...",   // 1
+  "..krrrrrrHk...",   // 2  banda roja en la frente
+  "...kssssss....",   // 3  cara - frente
+  "....sksss.....",   // 4  ojo (k)
+  "....sssss.....",   // 5  nariz
+  "....k.ss......",   // 6  boca + chin
+  "....ssss......",   // 7
+  "...RRRRRs.....",   // 8  hombro y brazo delantero (s = mano)
+  "..RRRRRRRs....",   // 9  torso
+  ".sRRRRyRRR....",   // 10 brazo trasero atrás (s en izquierda) + cinturón
+  ".sRRRRyRRR....",   // 11
+  "..RRRRyRRR....",   // 12
+  "...bbbbbb.....",   // 13 short
+  "...bBBBBb.....",   // 14
+  "....ss.ssss...",   // 15 piernas: derecha adelante extendida
+  "....s..ss.s...",   // 16
+  "....k.kk..k...",   // 17 pies
 ];
 
-// Hero corriendo - frame B (pierna derecha adelante)
+// Frame B: pie izquierdo adelante, brazo izquierdo atrás
 const HERO_RUN_B = [
-  "....kkkkkkk....",
-  "...kHHHHHHHk...",
-  "..kHHHHHHHHHk..",
-  "..kHrrrrrrrHk..",
-  "..kHrRRRRRrHk..",
-  "..kssssssskk...",
-  "..ksksskssk....",
-  "..ksssssssk....",
-  "...kssksskk....",
-  "....ksssk......",
-  "....rRRRRr.....",
-  "...rRRRRRRr....",
-  "..srRRRRRRrs...",
-  "..srRRyRRRrs...",
-  "..srRRyRRRrs...",
-  "...rRRyRRr.....",
-  "....bbbbb......",
-  "...bBBBBBb.....",
-  "...bBBBBBb.....",
-  "...ss...sss....",
-  "...kss..ssk....",
-  ".kkk......kkk..",
+  "....HHHHHHk...",
+  "...HHHHHHHk...",
+  "..krrrrrrHk...",
+  "...kssssss....",
+  "....sksss.....",
+  "....sssss.....",
+  "....k.ss......",
+  "....ssss......",
+  "..sRRRRR......",   // brazo trasero (a la izquierda)
+  ".sRRRRRRR.....",
+  ".RRRRRyRRRRs..",   // brazo delantero adelante
+  ".RRRRRyRRRRs..",
+  "..RRRRyRRR....",
+  "...bbbbbb.....",
+  "...bBBBBb.....",
+  "....ssss.ss...",   // pie izquierdo adelante
+  "...ss.s..s....",
+  "...kk..k.k....",
 ];
 
+// Salto: ovillado, brazos arriba
 const HERO_JUMP = [
-  "....kkkkkkk....",
-  "...kHHHHHHHk...",
-  "..kHHHHHHHHHk..",
-  "..kHrrrrrrrHk..",
-  "..kHrRRRRRrHk..",
-  "..kssssssskk...",
-  "..ksksskssk....",
-  "..ksssssssk....",
-  "...ksksskk.....",
-  "...sssssssss...",   // brazos extendidos
-  "..srRRRRRRRrs..",
-  "..srRRRRRRRRs..",
-  "..srRRRyRRRrs..",
-  "..srRRRyRRRrs..",
-  "...rRRRyRRr....",
-  "....bbbbbb.....",
-  "...bBBBBBBb....",
-  "...bBBBBBBb....",
-  "....sssss......",
-  "....kssk.......",
-  "...kkk.........",
-  "...............",
+  "....HHHHHHk...",
+  "...HHHHHHHk...",
+  "..krrrrrrHk...",
+  "...kssssss....",
+  "....sksss.....",
+  "....sssss.....",
+  "....k.ss......",
+  "....sssss.....",
+  "..sssssssss...",   // brazos extendidos hacia atrás y arriba
+  "..RRRRRRRRRs..",
+  ".RRRRRRyRRRRs.",
+  ".RRRRRRyRRRRs.",
+  "..RRRRRyRRR...",
+  "...bbbbbb.....",
+  "...bBBBBb.....",
+  "....sssss.....",   // piernas dobladas
+  ".....sss......",
+  ".....kkk......",
 ];
 
+// Ataque con hacha: brazo extendido hacia adelante con stone axe
 const HERO_ATTACK = [
-  "....kkkkkkk....",
-  "...kHHHHHHHk...",
-  "..kHHHHHHHHHk..",
-  "..kHrrrrrrrHk..",
-  "..kHrRRRRRrHk..",
-  "..kssssssskk...",
-  "..ksksskssk....",
-  "..ksssssssk....",
-  "...kssksskk....",
-  "....ksssk......",
-  "....rRRRRr.swww",  // brazo extendido + arma
-  "...rRRRRRRrwww.",
-  "..srRRRRRRsww..",
-  "..srRRyRRRrs...",
-  "..srRRyRRRrs...",
-  "...rRRyRRr.....",
-  "....bbbbb......",
-  "...bBBBBBb.....",
-  "...bBBBBBb.....",
-  "...sss.sss.....",
-  "...kss.ssk.....",
-  "..kkk....kkk...",
+  "....HHHHHHk...",
+  "...HHHHHHHk...",
+  "..krrrrrrHk...",
+  "...kssssss....",
+  "....sksss.....",
+  "....sssss.....",
+  "....k.ss......",
+  "....ssss......",
+  "..RRRRRRs.....",
+  ".RRRRRRRRsHHHH",  // brazo adelante + mango del hacha (HHHH)
+  "RRRRRRyRRRsHHkk",// hacha al frente: H mango + kk piedra
+  "RRRRRRyRRRsHkkk",
+  ".RRRRRyRRR.kkk.",
+  "..bbbbbb......",
+  "..bBBBBb......",
+  "...sssss......",
+  "...ss..s......",
+  "..kk...k......",
 ];
+
+// Proyectil hacha (en vuelo)
+const AXE_PROJECTILE = [
+  "..k.....",
+  ".HHk....",
+  "HHkk....",
+  ".HHkkkk.",
+  ".HHk.kk.",
+  "HHk..kk.",
+  "kHHk....",
+  "..kk....",
+];
+const AXE_PAL = {
+  '.': null,
+  'k': '#3a3a3a',     // piedra oscura (cabezal)
+  'H': '#7a4828'      // mango madera
+};
 
 // ==================== Sprites de enemigos ====================
 const ENEMY_PALETTES = {
