@@ -182,13 +182,32 @@ function renderTray() {
     const c = cv.getContext('2d');
     for (const [x, y] of p.cells) drawTile(c, x, y, cs, p.color);
     el.appendChild(cv);
-    el.addEventListener('mousedown', (e) => startDrag(e, i, e.clientX, e.clientY));
+
+    // Touch: drag and drop
     el.addEventListener('touchstart', (e) => {
+      if (p.used) return;
+      e.preventDefault();
       const t = e.touches[0];
-      startDrag(e, i, t.clientX, t.clientY);
+      state.dragging = { pieceIdx: i, mouseX: t.clientX, mouseY: t.clientY, source: 'touch' };
+      state.selected = i;
+      document.body.classList.add('dragging');
+      renderTray();
     }, { passive: false });
+
+    // Mouse: click-to-grab / click-to-drop
     el.addEventListener('click', () => {
-      if (!p.used) state.selected = i;
+      if (p.used) return;
+      // si estaba agarrando esta misma pieza, soltala (cancelar)
+      if (state.dragging && state.dragging.source === 'mouse' && state.dragging.pieceIdx === i) {
+        state.dragging = null;
+        document.body.classList.remove('dragging');
+        renderTray();
+        return;
+      }
+      // agarrar (o cambiar a esta pieza)
+      state.selected = i;
+      state.dragging = { pieceIdx: i, mouseX: 0, mouseY: 0, source: 'mouse' };
+      document.body.classList.add('dragging');
       renderTray();
     });
     tray.appendChild(el);
@@ -240,8 +259,12 @@ function drawBoard(dt) {
   let gx = -1, gy = -1;
   if (state.dragging) {
     const rect = canvas.getBoundingClientRect();
-    const cx = state.dragging.mouseX - rect.left;
-    const cy = state.dragging.mouseY - rect.top;
+    let cx = state.dragging.mouseX - rect.left;
+    let cy = state.dragging.mouseY - rect.top;
+    // si el mouse aun no se movio (recien agarrado) usar centro del board
+    if (state.dragging.source === 'mouse' && state.dragging.mouseX === 0) {
+      cx = canvas.width / 2; cy = canvas.height / 2;
+    }
     if (cx >= 0 && cy >= 0 && cx < canvas.width && cy < canvas.height) {
       gx = Math.floor(cx / CELL);
       gy = Math.floor(cy / CELL);
@@ -275,31 +298,24 @@ function drawBoard(dt) {
 }
 
 // ==================== Drag & drop ====================
-function startDrag(e, idx, mx, my) {
-  if (e.preventDefault) e.preventDefault();
-  if (state.pieces[idx].used) return;
-  state.selected = idx;
-  state.dragging = { pieceIdx: idx, mouseX: mx, mouseY: my };
-  document.body.classList.add('dragging');
-  document.querySelectorAll('.tray-piece').forEach((el, i) => el.classList.toggle('dragging', i === idx));
-  renderTray();
-}
-
 document.addEventListener('mousemove', (e) => {
-  if (!state.dragging) return;
-  state.dragging.mouseX = e.clientX;
-  state.dragging.mouseY = e.clientY;
+  if (state.dragging) {
+    state.dragging.mouseX = e.clientX;
+    state.dragging.mouseY = e.clientY;
+  }
 });
+
 document.addEventListener('touchmove', (e) => {
-  if (!state.dragging) return;
+  if (!state.dragging || state.dragging.source !== 'touch') return;
   if (e.touches.length === 0) return;
   e.preventDefault();
   state.dragging.mouseX = e.touches[0].clientX;
   state.dragging.mouseY = e.touches[0].clientY;
 }, { passive: false });
 
-function endDrag(e) {
-  if (!state.dragging) return;
+// Touch: al soltar el dedo se intenta colocar
+document.addEventListener('touchend', () => {
+  if (!state.dragging || state.dragging.source !== 'touch') return;
   const rect = canvas.getBoundingClientRect();
   const cx = state.dragging.mouseX - rect.left;
   const cy = state.dragging.mouseY - rect.top;
@@ -311,9 +327,40 @@ function endDrag(e) {
   state.dragging = null;
   document.body.classList.remove('dragging');
   renderTray();
-}
-document.addEventListener('mouseup', endDrag);
-document.addEventListener('touchend', endDrag);
+});
+
+// Mouse: click sobre el board coloca la pieza agarrada
+canvas.addEventListener('click', (e) => {
+  if (!state.dragging || state.dragging.source !== 'mouse') return;
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  const gx = Math.floor(cx / CELL);
+  const gy = Math.floor(cy / CELL);
+  if (placePiece(state.dragging.pieceIdx, gx, gy)) {
+    state.dragging = null;
+    document.body.classList.remove('dragging');
+    renderTray();
+  }
+  // si no entra, mantenemos la pieza agarrada
+});
+
+// ESC o click derecho cancelan el agarre
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.dragging) {
+    state.dragging = null;
+    document.body.classList.remove('dragging');
+    renderTray();
+  }
+});
+canvas.addEventListener('contextmenu', (e) => {
+  if (state.dragging) {
+    e.preventDefault();
+    state.dragging = null;
+    document.body.classList.remove('dragging');
+    renderTray();
+  }
+});
 
 // ==================== Teclado ====================
 window.addEventListener('keydown', (e) => {

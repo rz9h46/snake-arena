@@ -277,6 +277,12 @@ kbd {
   font-weight: 600;
 }
 .mode-pill { color: var(--accent); }
+#hud-lives-pill { color: var(--danger); border-color: rgba(255, 94, 122, 0.4); transition: transform .15s; }
+#hud-lives-pill.flash { animation: lifeFlash .5s ease-out; }
+@keyframes lifeFlash {
+  0% { transform: scale(1); background: rgba(255, 94, 122, 0.5); }
+  100% { transform: scale(1); background: rgba(10, 13, 24, 0.7); }
+}
 .hud-btn {
   cursor: pointer;
   pointer-events: auto;

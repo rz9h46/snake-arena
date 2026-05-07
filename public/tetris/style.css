@@ -208,6 +208,40 @@ html, body {
 .mode-card .mode-ico { font-size: 28px; }
 .mode-card .mode-title { font-weight: 700; margin-top: 4px; font-size: 14px; }
 .mode-card .mode-desc { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.toggles {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid var(--panel-border);
+}
+.toggle {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.toggle input[type="checkbox"] {
+  width: 36px; height: 20px;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background .15s;
+}
+.toggle input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 1px; left: 1px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left .15s;
+}
+.toggle input[type="checkbox"]:checked { background: var(--accent); }
+.toggle input[type="checkbox"]:checked::after { left: 17px; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn {
   flex: 1 1 auto;

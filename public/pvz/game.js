@@ -29,7 +29,7 @@ function resize() {
   CELL_W = Math.floor(maxW / COLS);
   CELL_H = Math.floor(CELL_W * 0.9);
   canvas.width = CELL_W * COLS;
-  canvas.height = CELL_H * ROWS + 50; // +50 para indicador inferior
+  canvas.height = CELL_H * ROWS + 50;
 }
 window.addEventListener('resize', resize);
 resize();
@@ -343,21 +343,27 @@ function drawBoard() {
     ctx.strokeRect(col * CELL_W + 2, row * CELL_H + 2, CELL_W - 4, CELL_H - 4);
   }
 
-  // plantas
-  ctx.font = `${CELL_H * 0.55}px serif`;
+  // plantas (también ancladas al piso)
   ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.textBaseline = 'alphabetic';
   for (const pl of state.plants) {
     const def = PLANTS[pl.kind];
     const cx = pl.col * CELL_W + CELL_W / 2;
     const cy = pl.row * CELL_H + CELL_H / 2;
-    // bg
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    const groundY = pl.row * CELL_H + CELL_H * 0.92;
+    // sombra
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY, CELL_W * 0.28, CELL_H * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // bg circular sutil
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
     ctx.beginPath();
     ctx.arc(cx, cy, CELL_W * 0.32, 0, Math.PI * 2);
     ctx.fill();
     // ico
-    ctx.fillText(def.ico, cx, cy);
+    ctx.font = `${CELL_H * 0.58}px serif`;
+    ctx.fillText(def.ico, cx, groundY - 2);
     // hp bar si esta dañado
     if (pl.hp < def.hp) {
       const ratio = pl.hp / def.hp;
@@ -389,32 +395,47 @@ function drawBoard() {
     ctx.fill();
   }
 
-  // zombies
+  // zombies (anclados al piso de la fila, con sombra debajo y bobbing sutil)
+  const t = performance.now() * 0.005;
   for (const z of state.zombies) {
     const def = ZOMBIE_TYPES[z.kind];
     const cx = z.x + CELL_W / 2;
-    const cy = z.row * CELL_H + CELL_H / 2;
-    ctx.font = `${CELL_H * 0.6}px serif`;
-    if (z.slowUntil > 0) {
-      ctx.fillStyle = 'rgba(168, 230, 255, 0.4)';
-      ctx.beginPath();
-      ctx.arc(cx, cy, CELL_W * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillText(def.ico, cx, cy);
+    const groundY = z.row * CELL_H + CELL_H * 0.92;   // piso de la fila
+    const bob = Math.sin(t + z.x * 0.02) * 2;          // pequeño rebote del andar
+    // sombra
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(cx, groundY, CELL_W * 0.28, CELL_H * 0.07, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // emoji opaco con baseline alphabetic
+    ctx.font = `${CELL_H * 0.62}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = '#0a0d18';
+    ctx.fillText(def.ico, cx, groundY - 2 + bob);
+    // accesorio (cono/balde) arriba de la cabeza
     if (def.accIco) {
-      ctx.font = `${CELL_H * 0.35}px serif`;
-      ctx.fillText(def.accIco, cx, cy - CELL_H * 0.32);
+      ctx.font = `${CELL_H * 0.36}px serif`;
+      ctx.fillText(def.accIco, cx, groundY - CELL_H * 0.55 + bob);
     }
-    // hp bar
+    // marcador slow: copo de nieve flotando al costado
+    if (z.slowUntil > 0) {
+      ctx.font = `${CELL_H * 0.28}px serif`;
+      const ang = t * 2;
+      ctx.fillText('❄️', cx + CELL_W * 0.32 + Math.cos(ang) * 3, groundY - CELL_H * 0.3 + Math.sin(ang) * 3);
+    }
+    // hp bar arriba
     if (z.hp < def.hp) {
       const ratio = Math.max(0, z.hp / def.hp);
-      ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(cx - 18, cy + CELL_H * 0.32, 36, 4);
+      const barY = groundY - CELL_H * 0.78;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(cx - 20, barY, 40, 5);
       ctx.fillStyle = ratio > 0.4 ? '#9aff5e' : '#ff5e7a';
-      ctx.fillRect(cx - 18, cy + CELL_H * 0.32, 36 * ratio, 4);
+      ctx.fillRect(cx - 20, barY, 40 * ratio, 5);
     }
   }
+  // restaurar baseline
+  ctx.textBaseline = 'middle';
 
   // suns
   for (const s of state.suns) {

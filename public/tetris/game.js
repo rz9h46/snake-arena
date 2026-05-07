@@ -392,16 +392,25 @@ function drawBoard(ctx, board) {
     }
   }
 
-  // ghost
-  if (board.alive && board.piece) {
+  // ghost (donde caería si bajás ya)
+  if (board.alive && board.piece && state.ghostOn) {
     const gy = board.ghostY();
+    const color = PIECES[board.piece.name].color;
     for (const [cx, cy] of board.cells()) {
       const x = board.piece.x + cx;
       const y = gy + cy;
       if (y >= 0 && x >= 0 && x < COLS && y < ROWS) {
+        // relleno semi
         ctx.globalAlpha = 0.18;
-        drawCell(ctx, x, y, PIECES[board.piece.name].color, 0.8);
+        ctx.fillStyle = color;
+        ctx.fillRect(x * CELL_SIZE() + 2, y * CELL_SIZE() + 2, CELL_SIZE() - 4, CELL_SIZE() - 4);
         ctx.globalAlpha = 1;
+        // contorno claro
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(x * CELL_SIZE() + 2, y * CELL_SIZE() + 2, CELL_SIZE() - 4, CELL_SIZE() - 4);
+        ctx.setLineDash([]);
       }
     }
     // pieza activa
@@ -508,6 +517,8 @@ const state = {
   running: false,
   paused: false,
   softDrops: [false, false],
+  ghostOn: localStorage.getItem('tetris-ghost') !== '0',
+  garbageOn: localStorage.getItem('tetris-garbage') !== '0'
 };
 
 const stage = document.getElementById('stage');
@@ -547,6 +558,25 @@ document.getElementById('btn-pause-menu').addEventListener('click', () => {
 if (!localStorage.getItem('tetris-seen-help')) {
   helpModal.classList.remove('hidden');
   localStorage.setItem('tetris-seen-help', '1');
+}
+
+// Toggles del menú
+const toggleGhost = document.getElementById('toggle-ghost');
+const toggleGarbage = document.getElementById('toggle-garbage');
+toggleGhost.checked = state.ghostOn;
+toggleGarbage.checked = state.garbageOn;
+toggleGhost.addEventListener('change', () => {
+  state.ghostOn = toggleGhost.checked;
+  localStorage.setItem('tetris-ghost', state.ghostOn ? '1' : '0');
+});
+toggleGarbage.addEventListener('change', () => {
+  state.garbageOn = toggleGarbage.checked;
+  localStorage.setItem('tetris-garbage', state.garbageOn ? '1' : '0');
+});
+
+function syncTogglesUI() {
+  toggleGhost.checked = state.ghostOn;
+  toggleGarbage.checked = state.garbageOn;
 }
 
 function openRanking() {
@@ -606,6 +636,13 @@ window.addEventListener('keydown', (e) => {
   if ((e.key === 'p' || e.key === 'P') && state.running) {
     e.preventDefault();
     togglePause();
+    return;
+  }
+  if (e.key === 'g' || e.key === 'G') {
+    e.preventDefault();
+    state.ghostOn = !state.ghostOn;
+    localStorage.setItem('tetris-ghost', state.ghostOn ? '1' : '0');
+    syncTogglesUI();
     return;
   }
   if (!state.running || state.paused) return;
@@ -694,8 +731,7 @@ function loop(now) {
       const cleared = b.update(dt, state.softDrops[i]);
       if (cleared > 0) {
         beep(cleared >= 4 ? 'tetris' : 'clear');
-        // basura en 2P: 2 lineas->1, 3->2, 4->4
-        if (state.players === 2) {
+        if (state.players === 2 && state.garbageOn) {
           const send = cleared === 2 ? 1 : cleared === 3 ? 2 : cleared === 4 ? 4 : 0;
           pendingGarbage[1 - i] += send;
         }

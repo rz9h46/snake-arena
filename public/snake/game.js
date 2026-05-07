@@ -121,7 +121,9 @@ const state = {
   paused: false,
   difficulty: localStorage.getItem('snake-difficulty') || 'medium',
   joystickAngle: null,    // angulo activo del stick izquierdo o null
-  arrows: { up: false, down: false, left: false, right: false }
+  arrows: { up: false, down: false, left: false, right: false },
+  lives: 3,
+  startingLives: 3
 };
 
 // ==================== Audio (Web Audio API) ====================
@@ -567,6 +569,40 @@ function killSnake(w, s, killer) {
     if (s === state.player) playSound('powerup');
     return;
   }
+
+  // Sistema de vidas en SP: si al jugador le quedan vidas, respawnea sin morir del todo
+  if (s === state.player && state.mode === 'single' && state.lives > 1) {
+    state.lives -= 1;
+    // explosion en el lugar
+    spawnParticles(s.x, s.y, 40, s.color, { speed: 6, decay: 0.03, size: rand(3, 8) });
+    // dropea un poco de comida (el "cuerpo" se desparrama parcial)
+    const drops = Math.min(50, Math.floor(s.length * 0.6));
+    for (let i = 0; i < drops; i++) {
+      const seg = s.segments[Math.floor(Math.random() * s.segments.length)];
+      if (!seg) continue;
+      spawnFood(w, seg.x + rand(-10, 10), seg.y + rand(-10, 10), Math.random() < 0.18 ? 3 : 1, s.color);
+    }
+    // crear nueva serpiente conservando algo de progreso
+    const oldKills = s.kills;
+    const newLen = Math.max(CFG.START_LENGTH, Math.floor(s.length * 0.5));
+    w.snakes.delete(s.id);
+    const fresh = createSnake({
+      id: 'me', name: state.name, color: state.color, skin: state.skin,
+      klass: state.klass, isBot: false
+    });
+    fresh.length = newLen;
+    fresh.kills = oldKills;
+    applyEffect(fresh, 'godmode', 2.5);
+    w.snakes.set(fresh.id, fresh);
+    state.player = fresh;
+    state.camera.x = fresh.x - viewport.w / 2;
+    state.camera.y = fresh.y - viewport.h / 2;
+    playSound('death');
+    shake(18);
+    flashLifeLost();
+    return;
+  }
+
   s.alive = false;
   if (killer && killer !== s) {
     killer.kills += 1;
@@ -1640,6 +1676,16 @@ function updateHUD() {
     hudStreakPill.classList.toggle('fire', streak >= 6);
   }
 
+  // Vidas (solo SP). En MP ocultamos la pill.
+  const livesPill = document.getElementById('hud-lives-pill');
+  const livesEl = document.getElementById('hud-lives');
+  if (state.mode === 'single') {
+    livesPill.style.display = '';
+    livesEl.textContent = state.lives > 0 ? '❤️'.repeat(state.lives) : '💀';
+  } else {
+    livesPill.style.display = 'none';
+  }
+
   snakes.sort((a, b) => b.length - a.length);
   const myIdx = snakes.findIndex(s => s.isMe);
   hudPos.textContent = (myIdx === -1 ? '-' : (myIdx + 1)) + '/' + snakes.length;
@@ -1749,6 +1795,24 @@ function flashLevelUp() {
   setTimeout(() => burst.classList.add('hidden'), 1200);
 }
 
+function flashLifeLost() {
+  const pill = document.getElementById('hud-lives-pill');
+  pill.classList.remove('flash');
+  void pill.offsetWidth;
+  pill.classList.add('flash');
+  setTimeout(() => pill.classList.remove('flash'), 600);
+
+  const burst = document.getElementById('combo-burst');
+  burst.classList.remove('hidden', 'show');
+  burst.textContent = state.lives === 1 ? 'ÚLTIMA VIDA!' : `-1 VIDA · QUEDAN ${state.lives}`;
+  burst.style.color = state.lives === 1 ? '#ff5e7a' : '#ffb35e';
+  burst.style.textShadow = `0 0 28px ${state.lives === 1 ? '#ff5e7a' : '#ffb35e'}, 0 4px 12px rgba(0,0,0,0.8)`;
+  void burst.offsetWidth;
+  burst.classList.add('show');
+  setTimeout(() => burst.classList.remove('show'), 700);
+  setTimeout(() => burst.classList.add('hidden'), 1100);
+}
+
 function showCombo(streak) {
   if (streak < 2) return;
   const burst = document.getElementById('combo-burst');
@@ -1821,17 +1885,18 @@ function onPlayerDied(serverData) {
 // Continuar = mismo mundo, jugador renace en posición aleatoria (en SP no resetea bots ni comida)
 document.getElementById('death-continue').addEventListener('click', () => {
   deathOverlay.classList.add('hidden');
+  state.lives = state.startingLives;
   if (state.mode === 'single') {
     if (!state.world) {
       state.world = spawnWorld();
     } else {
-      // borrar el cadaver del jugador y respawnear uno nuevo
       const oldPlayer = state.player;
       if (oldPlayer) state.world.snakes.delete(oldPlayer.id);
       const fresh = createSnake({
         id: 'me', name: state.name, color: state.color, skin: state.skin,
         klass: state.klass, isBot: false
       });
+      applyEffect(fresh, 'godmode', 2);
       state.world.snakes.set(fresh.id, fresh);
       state.player = fresh;
     }
@@ -1846,6 +1911,7 @@ document.getElementById('death-continue').addEventListener('click', () => {
 // Nuevo juego = reset completo del mundo (en MP es lo mismo que respawn)
 document.getElementById('death-newgame').addEventListener('click', () => {
   deathOverlay.classList.add('hidden');
+  state.lives = state.startingLives;
   if (state.mode === 'single') {
     state.world = spawnWorld();
     state.camera.x = state.player.x - viewport.w / 2;
@@ -2019,6 +2085,7 @@ function startGame(mode) {
   state.mode = mode;
   state.name = (nameInput.value || 'Anon').slice(0, 16) || 'Anon';
   localStorage.setItem('snake-name', state.name);
+  state.lives = state.startingLives;
   menu.classList.add('hidden');
   hud.classList.remove('hidden');
   ensureAudio();
