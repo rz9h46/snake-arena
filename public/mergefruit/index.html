@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Merge Fruit</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <a class="back-link" href="/">← Arcade</a>
+  <h1>MERGE <span class="accent">FRUIT</span></h1>
+  <button id="btn-help" class="topbar-btn" title="Ayuda">❓</button>
+</header>
+
+<main id="stage">
+  <aside class="side">
+    <div class="stat">
+      <span class="lbl">Score</span>
+      <span class="val" id="hud-score">0</span>
+    </div>
+    <div class="stat">
+      <span class="lbl">Mejor</span>
+      <span class="val" id="hud-best">0</span>
+    </div>
+    <div class="stat next">
+      <span class="lbl">Próxima</span>
+      <span class="next-emoji" id="hud-next">🍒</span>
+    </div>
+    <div class="stat">
+      <span class="lbl">Mejor fruta</span>
+      <span class="val" id="hud-bigfruit">🍒</span>
+    </div>
+  </aside>
+
+  <div class="board-wrap">
+    <canvas id="board"></canvas>
+  </div>
+
+  <aside class="side">
+    <div class="ladder" id="ladder"></div>
+  </aside>
+</main>
+
+<div class="hint">
+  Mové el dedo / mouse en horizontal para apuntar, click / tap o <kbd>Espacio</kbd> para soltar la fruta.
+  <br>Frutas iguales se <strong>fusionan</strong> en la siguiente. Llegá a la 🍉 sandía.
+  Si una fruta queda sobre la línea roja durante 2 seg: game over.
+</div>
+
+<div id="help-modal" class="overlay hidden">
+  <div class="panel">
+    <h2>Cómo jugar</h2>
+    <ul class="bullets">
+      <li>Soltá frutas desde arriba — caen y se acumulan.</li>
+      <li>Cuando dos frutas iguales se tocan, se fusionan en la <strong>siguiente del orden</strong> y ganás puntos.</li>
+      <li>El orden es: 🍒 → 🍓 → 🍇 → 🍋 → 🍊 → 🍎 → 🍐 → 🍑 → 🍍 → 🍈 → 🍉</li>
+      <li>Lograr la sandía 🍉 da una explosión de puntos.</li>
+      <li>Si alguna fruta queda 2 segundos sobre la línea de peligro 🚨, perdés.</li>
+    </ul>
+    <p class="info"><strong>Controles:</strong> mouse / dedo para mover · click / tap o Espacio para soltar · <kbd>P</kbd> pausa · <kbd>Esc</kbd> menú</p>
+    <button class="btn primary" id="help-close">Entendido</button>
+  </div>
+</div>
+
+<div id="gameover" class="overlay hidden">
+  <div class="panel">
+    <h2 id="go-title">Tablero lleno 🪦</h2>
+    <div class="stats">
+      <div><span class="lbl">Score</span><strong id="go-score">0</strong></div>
+      <div><span class="lbl">Mejor fruta</span><strong id="go-fruit">🍒</strong></div>
+      <div><span class="lbl">Récord</span><strong id="go-best">0</strong></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="go-replay">🔄 Otra</button>
+      <button class="btn" id="go-menu">Menú</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause-overlay" class="hidden">
+  <div class="pause-card">
+    <div class="pause-title">⏸ PAUSA</div>
+    <button class="btn primary" id="btn-resume">▶ Reanudar</button>
+    <button class="btn" id="btn-pause-menu">Menú</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
