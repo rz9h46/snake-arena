@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Puzzle Cats</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <a class="back-link" href="/">← Arcade</a>
+  <h1>PUZZLE <span class="accent">CATS</span></h1>
+  <button id="btn-help" class="topbar-btn" title="Ayuda">❓</button>
+</header>
+
+<main id="stage">
+  <div id="hud">
+    <div class="stat"><span class="lbl">Gato</span><span class="val" id="hud-cat">—</span></div>
+    <div class="stat"><span class="lbl">Tiempo</span><span class="val" id="hud-time">0:00</span></div>
+    <div class="stat"><span class="lbl">Movs</span><span class="val" id="hud-moves">0</span></div>
+    <div class="stat"><span class="lbl">Piezas</span><span class="val" id="hud-pieces">0/0</span></div>
+    <div class="stat"><span class="lbl">Mejor</span><span class="val" id="hud-best">—</span></div>
+  </div>
+
+  <canvas id="game"></canvas>
+
+  <div class="actions-row">
+    <button class="btn ghost" id="btn-preview">👁 Ver pista</button>
+    <button class="btn ghost" id="btn-shuffle">🔀 Mezclar</button>
+    <button class="btn ghost" id="btn-menu-mid">🐈 Menú</button>
+  </div>
+
+  <div class="hint">
+    Arrastrá las piezas al marco. Las correctas se <strong>encajan solas</strong> al acercarlas.
+    Usá <kbd>P</kbd> para ver una pista del gato armado.
+  </div>
+</main>
+
+<div id="menu" class="overlay">
+  <div class="panel wide">
+    <h2>🐈 PUZZLE <span class="accent2">CATS</span></h2>
+    <p class="subtitle">Armá el rompecabezas para revelar el gato.</p>
+
+    <div class="field">
+      <span>Elegí gato</span>
+      <div id="cats-grid" class="cats-grid"></div>
+    </div>
+
+    <div class="field">
+      <span>Dificultad</span>
+      <div id="diff-grid" class="diff-grid"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="btn-start">▶ Empezar</button>
+      <button class="btn ghost" id="btn-help-open">❓ Cómo jugar</button>
+    </div>
+  </div>
+</div>
+
+<div id="help-modal" class="overlay hidden">
+  <div class="panel">
+    <h2>Cómo jugar</h2>
+    <ul class="bullets">
+      <li>Vas a ver una <strong>pista</strong> del gato armado por unos segundos.</li>
+      <li>Después se rompe en piezas que caen en la <strong>bandeja</strong> abajo del marco.</li>
+      <li><strong>Arrastrá</strong> cada pieza al lugar correcto del marco. Cuando esté cerca, se <strong>encaja sola</strong>.</li>
+      <li>Las piezas tienen <strong>clavijas (tabs)</strong> y <strong>ranuras (blanks)</strong> que solo encajan con su pieza vecina.</li>
+      <li>Cuanto menos movimientos y menos tiempo, mejor récord.</li>
+      <li>Mouse, touch o teclado: <kbd>P</kbd> ver pista, <kbd>R</kbd> mezclar, <kbd>Esc</kbd> menú.</li>
+    </ul>
+    <button class="btn primary" id="help-close">Listo</button>
+  </div>
+</div>
+
+<div id="won" class="overlay hidden">
+  <div class="panel">
+    <h2 id="won-title">🎉 ¡Lo armaste!</h2>
+    <p id="won-cat-name" class="subtitle">—</p>
+    <div class="stats-grid">
+      <div><span class="lbl">Tiempo</span><strong id="won-time">0:00</strong></div>
+      <div><span class="lbl">Movs</span><strong id="won-moves">0</strong></div>
+      <div><span class="lbl">Mejor</span><strong id="won-best">—</strong></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="won-next">➡ Otro gato</button>
+      <button class="btn" id="won-replay">🔄 Mismo</button>
+      <button class="btn" id="won-menu">Menú</button>
+    </div>
+  </div>
+</div>
+
+<div id="preview-overlay" class="hidden">
+  <canvas id="preview-canvas"></canvas>
+  <div id="preview-label">Memorizá la imagen...</div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
