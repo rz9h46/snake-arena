@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>Taco Master</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <a class="back-link" href="/">← Arcade</a>
+  <h1>TACO <span class="accent">MASTER</span></h1>
+  <button id="btn-help" class="topbar-btn" title="Ayuda">❓</button>
+</header>
+
+<main id="stage">
+  <div id="hud">
+    <div class="stat"><span class="lbl">Score</span><span class="val" id="hud-score">0</span></div>
+    <div class="stat"><span class="lbl">Combo</span><span class="val" id="hud-combo">×1</span></div>
+    <div class="stat"><span class="lbl">Nivel</span><span class="val" id="hud-level">1</span></div>
+    <div class="stat"><span class="lbl">Servidos</span><span class="val" id="hud-served">0</span></div>
+    <div class="stat lives"><span class="lbl">Vidas</span><span class="val" id="hud-lives">❤️❤️❤️</span></div>
+    <div class="stat"><span class="lbl">Mejor</span><span class="val" id="hud-best">0</span></div>
+    <button class="stat hud-btn" id="btn-pause" title="Pausa (P)">⏸</button>
+  </div>
+
+  <section id="customer-panel">
+    <div id="customer-area">
+      <div id="customer-face">👨</div>
+      <div id="customer-info">
+        <div id="customer-name">—</div>
+        <div id="customer-bubble">
+          <span class="bubble-label">Quiero un taco con:</span>
+          <div id="customer-order"></div>
+        </div>
+        <div id="patience-bar"><div id="patience-fill"></div></div>
+      </div>
+    </div>
+    <div id="feedback-burst" class="hidden"></div>
+  </section>
+
+  <section id="taco-area">
+    <div id="taco-shell"></div>
+  </section>
+
+  <section id="ingredients">
+    <div id="ingredients-grid"></div>
+  </section>
+
+  <div class="actions-row">
+    <button class="btn primary" id="btn-serve">🌮 Servir taco</button>
+    <button class="btn ghost" id="btn-clear">🗑 Limpiar</button>
+  </div>
+
+  <div class="hint">
+    Click / tap los ingredientes para sumarlos al taco · <kbd>1</kbd>-<kbd>9</kbd> teclado · <kbd>Enter</kbd> servir · <kbd>Backspace</kbd> limpiar · <kbd>P</kbd> pausa
+  </div>
+</main>
+
+<div id="help-modal" class="overlay hidden">
+  <div class="panel">
+    <h2>Cómo jugar</h2>
+    <ul class="bullets">
+      <li>Cada cliente llega con un pedido específico (ingredientes que quiere en su taco).</li>
+      <li>Clickeá los ingredientes en el panel inferior para sumarlos a tu taco.</li>
+      <li>Cuando tengas <strong>exactamente</strong> los ingredientes pedidos, hacé click en <strong>Servir taco</strong> (o se sirve solo cuando coincide).</li>
+      <li>El cliente tiene <strong>paciencia</strong>: la barra arriba va de verde a rojo. Si llega a 0, se va enojado y perdés vida.</li>
+      <li>Servir rápido = bonus extra. Cadenas seguidas = combo multiplicador.</li>
+      <li>Agregar un ingrediente que NO pidió: -5 puntos y se rompe el combo.</li>
+      <li>3 vidas. Cada cliente enojado o pedido errado quita una.</li>
+      <li>Cada 5 clientes servidos = sube el nivel: pedidos más largos, paciencia más corta.</li>
+    </ul>
+    <button class="btn primary" id="help-close">Listo</button>
+  </div>
+</div>
+
+<div id="gameover" class="overlay hidden">
+  <div class="panel">
+    <h2 id="go-title">Cerró el local 🪦</h2>
+    <div class="stats-grid">
+      <div><span class="lbl">Score</span><strong id="go-score">0</strong></div>
+      <div><span class="lbl">Servidos</span><strong id="go-served">0</strong></div>
+      <div><span class="lbl">Nivel</span><strong id="go-level">1</strong></div>
+      <div><span class="lbl">Mejor</span><strong id="go-best">0</strong></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="go-replay">🔄 Otro turno</button>
+      <button class="btn" id="go-menu">Menú</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause-overlay" class="hidden">
+  <div class="pause-card">
+    <div class="pause-title">⏸ PAUSA</div>
+    <button class="btn primary" id="btn-resume">▶ Reanudar</button>
+    <button class="btn" id="btn-pause-menu">Menú</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
