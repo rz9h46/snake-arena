@@ -19,6 +19,8 @@ const ZOMBIE_TYPES = {
 };
 
 const PLANT_KEYS = ['sunflower', 'peashooter', 'wallnut', 'snowpea', 'cherry'];
+const MAX_WAVE = 5;
+const PICK_COUNT = 4;     // hay que elegir 4 de 5
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -43,6 +45,9 @@ const state = {
   selected: null,
   cursor: { row: 2, col: 4 },
   alive: true,
+  victory: false,
+  started: false,
+  gameOverShown: false,
   paused: false,
   wave: 1,
   waveTimer: 0,
@@ -53,8 +58,9 @@ const state = {
   cooldowns: {},
   best: parseInt(localStorage.getItem('pvz-best') || '0', 10),
   effects: [],
-  lawnmowers: [],   // {row, triggered, x}
-  waveAnnounce: 0   // segundos restantes mostrando "WAVE N"
+  lawnmowers: [],
+  waveAnnounce: 0,
+  selectedPlants: PLANT_KEYS.slice()   // por defecto las 5
 };
 
 function rand(a, b) { return Math.random() * (b - a) + a; }
@@ -65,7 +71,7 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 const shop = document.getElementById('shop');
 function renderShop() {
   shop.innerHTML = '';
-  PLANT_KEYS.forEach((k, i) => {
+  state.selectedPlants.forEach((k, i) => {
     const p = PLANTS[k];
     const card = document.createElement('div');
     card.className = 'shop-card';
@@ -119,18 +125,22 @@ function spawnSun(x, y, target) {
 
 // ==================== Zombies / oleadas ====================
 function buildWave(n) {
+  // Curva de zombies por oleada (5 oleadas, la última enorme)
+  const counts =       [3, 4, 5, 6, 9];
+  const conePct =      [0, 0.15, 0.35, 0.5, 0.6];
+  const bucketPct =    [0, 0, 0.1, 0.2, 0.4];
+  const idx = Math.min(n - 1, counts.length - 1);
+  const baseCount = counts[idx];
+  const firstDelay = n === 1 ? 22 : (n === MAX_WAVE ? 4 : 6);
+  // delays más cortos en waves altas
+  const baseDelay = Math.max(2.5, 7.5 - n * 0.9);
   const queue = [];
-  // wave 1 más liviana, después escala
-  const baseCount = n === 1 ? 3 : Math.floor(2 + n * 1.3);
-  // primer zombie tarda mucho en wave 1 (25s prep), después 6s entre waves
-  const firstDelay = n === 1 ? 25 : 6;
   for (let i = 0; i < baseCount; i++) {
     let kind = 'normal';
-    if (n >= 3 && Math.random() < 0.3) kind = 'cone';
-    if (n >= 5 && Math.random() < 0.2) kind = 'bucket';
-    // delay entre zombies: lento al principio del juego, se acelera con waves
-    const baseDelay = n === 1 ? 8 : Math.max(3, 7 - n * 0.3);
-    const delay = i === 0 ? firstDelay : rand(baseDelay - 1.5, baseDelay + 1.5);
+    const r = Math.random();
+    if (r < bucketPct[idx]) kind = 'bucket';
+    else if (r < bucketPct[idx] + conePct[idx]) kind = 'cone';
+    const delay = i === 0 ? firstDelay : rand(baseDelay - 1, baseDelay + 1.2);
     queue.push({ kind, delay });
   }
   state.spawnQueue = queue;
@@ -153,10 +163,16 @@ function spawnZombie(kind) {
 
 function checkWaveEnd() {
   if (state.spawnQueue.length === 0 && state.zombies.length === 0 && state.zombiesSpawned >= state.zombiesInWave) {
+    if (state.wave >= MAX_WAVE) {
+      // ¡Ganaste el nivel!
+      state.victory = true;
+      state.alive = false;
+      return;
+    }
     state.wave++;
     state.sun = Math.min(state.sun + 75, 9999);
     buildWave(state.wave);
-    document.getElementById('wave-num').textContent = state.wave;
+    document.getElementById('wave-num').textContent = state.wave + '/' + MAX_WAVE;
     state.waveAnnounce = 3;
     beep('wave');
   }
@@ -1133,18 +1149,18 @@ function drawWaveAnnounce() {
   // banner de oleada
   if (state.waveAnnounce > 0) {
     const a = clamp(state.waveAnnounce / 3, 0, 1);
-    const isHuge = state.wave % 5 === 0 && state.wave > 1;
+    const isFinal = state.wave === MAX_WAVE;
     ctx.save();
     ctx.globalAlpha = a;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, ROWS * CELL_H * 0.35, canvas.width, 80);
-    ctx.font = `bold ${isHuge ? 38 : 32}px sans-serif`;
+    ctx.font = `bold ${isFinal ? 40 : 32}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = isHuge ? '#ff5e7a' : '#9aff5e';
+    ctx.fillStyle = isFinal ? '#ff5e7a' : '#9aff5e';
     ctx.shadowBlur = 16;
-    ctx.shadowColor = isHuge ? '#ff5e7a' : '#9aff5e';
-    ctx.fillText(isHuge ? `¡HUGE WAVE ${state.wave}!` : `OLEADA ${state.wave}`, canvas.width / 2, ROWS * CELL_H * 0.35 + 40);
+    ctx.shadowColor = isFinal ? '#ff5e7a' : '#9aff5e';
+    ctx.fillText(isFinal ? `¡FINAL WAVE!` : `OLEADA ${state.wave}/${MAX_WAVE}`, canvas.width / 2, ROWS * CELL_H * 0.35 + 40);
     ctx.shadowBlur = 0;
     ctx.restore();
   }
@@ -1255,7 +1271,12 @@ document.getElementById('btn-resume').addEventListener('click', togglePause);
 document.getElementById('btn-pause-menu').addEventListener('click', () => { window.location.href = '/'; });
 document.getElementById('btn-help').addEventListener('click', () => document.getElementById('help-modal').classList.remove('hidden'));
 document.getElementById('help-close').addEventListener('click', () => document.getElementById('help-modal').classList.add('hidden'));
-document.getElementById('go-replay').addEventListener('click', () => location.reload());
+document.getElementById('go-replay').addEventListener('click', () => {
+  document.getElementById('gameover').classList.add('hidden');
+  state.started = false;
+  buildPicker();
+  menuEl.classList.remove('hidden');
+});
 document.getElementById('go-menu').addEventListener('click', () => { window.location.href = '/'; });
 
 if (!localStorage.getItem('pvz-seen-help')) {
@@ -1268,7 +1289,7 @@ let last = performance.now();
 function loop(now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
-  if (state.alive && !state.paused) {
+  if (state.started && state.alive && !state.paused) {
     updateSkySun(dt);
     updatePlants(dt);
     updateZombies(dt);
@@ -1280,16 +1301,22 @@ function loop(now) {
     updateLawnmowers(dt);
     if (state.waveAnnounce > 0) state.waveAnnounce -= dt;
     checkWaveEnd();
-    if (!state.alive) {
-      if (state.zombiesKilled > state.best) {
-        state.best = state.zombiesKilled;
-        localStorage.setItem('pvz-best', state.best);
-      }
-      document.getElementById('go-wave').textContent = state.wave;
-      document.getElementById('go-zombies').textContent = state.zombiesKilled;
-      document.getElementById('go-best').textContent = state.best;
-      document.getElementById('gameover').classList.remove('hidden');
+  }
+  // mostrar overlay de fin (una sola vez)
+  if (state.started && !state.alive && !state.gameOverShown) {
+    state.gameOverShown = true;
+    if (state.zombiesKilled > state.best) {
+      state.best = state.zombiesKilled;
+      localStorage.setItem('pvz-best', state.best);
     }
+    document.getElementById('go-wave').textContent = state.wave + '/' + MAX_WAVE;
+    document.getElementById('go-zombies').textContent = state.zombiesKilled;
+    document.getElementById('go-best').textContent = state.best;
+    document.getElementById('go-title').textContent = state.victory
+      ? '🏆 ¡Nivel completado!'
+      : 'Los zombies te comieron 🧟';
+    document.getElementById('gameover').classList.remove('hidden');
+    if (state.victory) beep('wave');
   }
   drawBoard();
   drawWaveAnnounce();
@@ -1297,11 +1324,81 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-// inicializar lawnmowers (1 por fila al inicio del jardin)
-for (let r = 0; r < ROWS; r++) {
-  state.lawnmowers.push({ row: r, x: -25, triggered: false });
+// ==================== Menú de selección ====================
+const menuEl = document.getElementById('menu');
+const pickerEl = document.getElementById('plant-picker');
+const startBtn = document.getElementById('btn-start');
+const pickerHint = document.getElementById('picker-hint');
+const helpOpenBtn = document.getElementById('btn-help-open');
+
+function buildPicker() {
+  pickerEl.innerHTML = '';
+  state.selectedPlants = [];
+  PLANT_KEYS.forEach(k => {
+    const p = PLANTS[k];
+    const card = document.createElement('button');
+    card.className = 'plant-pick';
+    card.innerHTML = `<div class="ico">${p.ico}</div><div class="nm">${p.name}</div><div class="cost">☀️${p.cost}</div>`;
+    card.addEventListener('click', () => {
+      const idx = state.selectedPlants.indexOf(k);
+      if (idx >= 0) {
+        state.selectedPlants.splice(idx, 1);
+        card.classList.remove('selected');
+      } else {
+        if (state.selectedPlants.length >= PICK_COUNT) return;
+        state.selectedPlants.push(k);
+        card.classList.add('selected');
+      }
+      updatePickerHint();
+    });
+    pickerEl.appendChild(card);
+  });
+  updatePickerHint();
 }
-buildWave(1);
-state.waveAnnounce = 3.5;
+
+function updatePickerHint() {
+  const n = state.selectedPlants.length;
+  pickerHint.textContent = n < PICK_COUNT
+    ? `Seleccioná ${PICK_COUNT - n} más (${n}/${PICK_COUNT})`
+    : `✓ Listo (${n}/${PICK_COUNT})`;
+  startBtn.disabled = n !== PICK_COUNT;
+  startBtn.textContent = n === PICK_COUNT ? '▶ Comenzar nivel' : `▶ Comenzar (${PICK_COUNT - n} faltan)`;
+}
+
+function startLevel() {
+  if (state.selectedPlants.length !== PICK_COUNT) return;
+  // reset state
+  state.sun = 100;
+  state.plants = [];
+  state.zombies = [];
+  state.projectiles = [];
+  state.suns = [];
+  state.effects = [];
+  state.cooldowns = {};
+  state.alive = true;
+  state.victory = false;
+  state.gameOverShown = false;
+  state.wave = 1;
+  state.zombiesKilled = 0;
+  state.lawnmowers = [];
+  for (let r = 0; r < ROWS; r++) {
+    state.lawnmowers.push({ row: r, x: -25, triggered: false });
+  }
+  buildWave(1);
+  state.waveAnnounce = 3.5;
+  state.started = true;
+  document.getElementById('wave-num').textContent = '1/' + MAX_WAVE;
+  document.getElementById('sun-amount').textContent = state.sun;
+  menuEl.classList.add('hidden');
+  document.getElementById('gameover').classList.add('hidden');
+  ensureAudio();
+  renderShop();
+}
+
+startBtn.addEventListener('click', startLevel);
+helpOpenBtn.addEventListener('click', () => document.getElementById('help-modal').classList.remove('hidden'));
+
+// init: mostrar menú
+buildPicker();
 renderShop();
 requestAnimationFrame(loop);
