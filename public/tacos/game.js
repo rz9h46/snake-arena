@@ -115,6 +115,13 @@ function addIngredient(id) {
   renderIngredients();
   if (matchesOrder()) {
     setTimeout(() => { if (!state.customer.served) serve(); }, 350);
+  } else {
+    // ¿solo falta la bebida?
+    const ingMatch = state.taco.length === state.customer.order.length &&
+                     state.customer.order.every(i => state.taco.includes(i));
+    if (ingMatch && state.customer.drink && !state.tacoDrink) {
+      setTimeout(() => flashFeedback('🥤 Falta servir la bebida!', '#ffd75e'), 220);
+    }
   }
 }
 
@@ -172,30 +179,35 @@ function matchesOrder() {
 
 function serve() {
   if (!state.customer || state.customer.served) return;
-  const ok = matchesOrder();
-  state.customer.served = true;
-  if (ok) {
-    const speedRatio = state.customer.patience / state.customer.maxPatience;
-    const speedBonus = Math.floor(speedRatio * 80);
-    const basePoints = 50 + state.customer.order.length * 10;
-    const points = (basePoints + speedBonus) * state.combo;
-    state.score += points;
-    state.combo++;
-    state.served++;
-    flashFeedback(`+${points}  ${state.combo > 2 ? '🔥×' + (state.combo - 1) + '!' : '😋 Bueno!'}`, '#5fbb40');
-    beep('happy');
-    setHappyFace();
-    flyAwayTaco();          // ✨ taco vuela con chispas hacia el cliente
-    // sube nivel cada 5 servidos
-    if (state.served % 5 === 0) state.level++;
-  } else {
-    state.combo = 1;
-    state.lives--;
-    flashFeedback('🤬 ¡No era así!', '#ff5e7a');
+  if (!matchesOrder()) {
+    // No se sirve, no se pierde vida — solo hint claro de qué falta
+    const ingMatch = state.taco.length === state.customer.order.length &&
+                     state.customer.order.every(i => state.taco.includes(i));
+    let msg;
+    if (state.taco.length === 0) msg = '🥬 Falta poner los ingredientes';
+    else if (state.taco.length < state.customer.order.length) msg = '🌮 Faltan ingredientes';
+    else if (!ingMatch) msg = '🌮 No coincide con el pedido';
+    else if (state.customer.drink && !state.tacoDrink) msg = '🥤 Falta servir la bebida';
+    else if (state.customer.drink && state.tacoDrink !== state.customer.drink) msg = '🥤 No es esa bebida';
+    else if (!state.customer.drink && state.tacoDrink) msg = '🥤 No pidió bebida — sacala';
+    else msg = '🤔 No es lo que pidió';
+    flashFeedback(msg, '#ffd75e');
     beep('wrong');
-    setSadFace();
+    return;
   }
-  // siguiente cliente luego de breve pausa
+  state.customer.served = true;
+  const speedRatio = state.customer.patience / state.customer.maxPatience;
+  const speedBonus = Math.floor(speedRatio * 80);
+  const basePoints = 50 + state.customer.order.length * 10 + (state.customer.drink ? 20 : 0);
+  const points = (basePoints + speedBonus) * state.combo;
+  state.score += points;
+  state.combo++;
+  state.served++;
+  flashFeedback(`+${points}  ${state.combo > 2 ? '🔥×' + (state.combo - 1) + '!' : '😋 Bueno!'}`, '#5fbb40');
+  beep('happy');
+  setHappyFace();
+  flyAwayTaco();
+  if (state.served % 5 === 0) state.level++;
   setTimeout(() => {
     if (!state.alive) { gameOver(); return; }
     if (state.lives <= 0) { state.alive = false; gameOver(); return; }
@@ -582,138 +594,192 @@ function buildIngredient(id) {
     return m;
   };
   switch (id) {
-    case 'meat':
-      addMesh(new THREE.BoxGeometry(0.42, 0.18, 0.32), 0x8a3a18, { roughness: 0.6 });
-      addMesh(new THREE.BoxGeometry(0.36, 0.06, 0.26), 0x6a2810, { position: [0, 0.11, 0] });
-      // chunks chiquitos
-      for (let i = 0; i < 3; i++) {
-        addMesh(new THREE.BoxGeometry(0.08, 0.06, 0.08), 0x5a2008, {
-          position: [(Math.random() - 0.5) * 0.3, 0.13, (Math.random() - 0.5) * 0.2]
+    case 'meat': {
+      // Chunks de carne molida cocida (no un bloque que parece chocolate)
+      const chunks = [
+        [-0.10,  0.00, -0.06, 0.075],
+        [ 0.08,  0.04,  0.04, 0.065],
+        [ 0.00,  0.02,  0.10, 0.060],
+        [-0.07,  0.06,  0.06, 0.055],
+        [ 0.10,  0.00, -0.07, 0.050],
+        [-0.04,  0.05, -0.05, 0.050]
+      ];
+      for (const [px, py, pz, ps] of chunks) {
+        addMesh(new THREE.SphereGeometry(ps, 8, 6), 0x8a3a18, {
+          position: [px, py, pz],
+          scale: [1, 0.65, 1.1],
+          rotation: [0, Math.random() * Math.PI, 0],
+          roughness: 0.7, flatShading: true
+        });
+      }
+      // chunks más oscuros (parte tostada de la carne)
+      addMesh(new THREE.SphereGeometry(0.04, 6, 5), 0x5a2008, { position: [0.04, 0.075, 0.02] });
+      addMesh(new THREE.SphereGeometry(0.035, 6, 5), 0x5a2008, { position: [-0.06, 0.07, -0.02] });
+      // chispas de condimento (granitos negros)
+      for (let i = 0; i < 6; i++) {
+        addMesh(new THREE.SphereGeometry(0.012, 4, 3), 0x1a0c04, {
+          position: [(Math.random() - 0.5) * 0.22, 0.08 + Math.random() * 0.02, (Math.random() - 0.5) * 0.2]
         });
       }
       break;
-    case 'chicken':
-      addMesh(new THREE.CylinderGeometry(0.13, 0.13, 0.34, 14), 0xd8a050, {
-        roughness: 0.55, rotation: [0, 0, Math.PI / 2]
-      });
-      addMesh(new THREE.SphereGeometry(0.05, 6, 4), 0xc88040, {
-        position: [0.1, 0.07, 0.05]
-      });
-      break;
-    case 'lettuce': {
-      const geom = new THREE.IcosahedronGeometry(0.24, 1);
-      const pos = geom.attributes.position;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-        const v = new THREE.Vector3(x, y, z);
-        const noise = 0.07 * Math.sin(v.x * 8 + v.y * 5) * Math.cos(v.y * 7 + v.z * 4);
-        v.normalize().multiplyScalar(0.24 + noise);
-        pos.setXYZ(i, v.x, v.y * 0.7, v.z);
+    }
+    case 'chicken': {
+      // pollo desmechado: tiritas pequeñas
+      for (let i = 0; i < 5; i++) {
+        const ang = (i / 5) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+        const len = 0.10 + Math.random() * 0.06;
+        addMesh(new THREE.CylinderGeometry(0.025, 0.025, len, 6), 0xd8a050, {
+          position: [Math.cos(ang) * 0.04, 0.04 + i * 0.015, Math.sin(ang) * 0.04],
+          rotation: [0, ang + Math.PI / 2, Math.PI / 2 + (Math.random() - 0.5) * 0.3],
+          roughness: 0.55
+        });
       }
-      geom.computeVertexNormals();
-      addMesh(geom, 0x5fbb40, { roughness: 0.6, flatShading: true });
-      // un par de hojitas más
-      for (let i = 0; i < 2; i++) {
-        const g2 = new THREE.IcosahedronGeometry(0.1, 0);
-        addMesh(g2, 0x7fd550, {
-          position: [(Math.random() - 0.5) * 0.3, 0.05 + Math.random() * 0.05, (Math.random() - 0.5) * 0.2],
-          flatShading: true
+      // un par de pedazos más oscuros (dorados)
+      addMesh(new THREE.SphereGeometry(0.025, 6, 5), 0xc88040, { position: [0.05, 0.1, -0.02] });
+      addMesh(new THREE.SphereGeometry(0.022, 6, 5), 0xc88040, { position: [-0.04, 0.09, 0.05] });
+      break;
+    }
+    case 'lettuce': {
+      // 3 hojitas separadas
+      for (let i = 0; i < 3; i++) {
+        const geom = new THREE.IcosahedronGeometry(0.10, 1);
+        const pos = geom.attributes.position;
+        for (let j = 0; j < pos.count; j++) {
+          const v = new THREE.Vector3(pos.getX(j), pos.getY(j), pos.getZ(j));
+          const noise = 0.04 * Math.sin(v.x * 8 + v.y * 5) * Math.cos(v.y * 7);
+          v.normalize().multiplyScalar(0.10 + noise);
+          pos.setXYZ(j, v.x, v.y * 0.55, v.z);
+        }
+        geom.computeVertexNormals();
+        const ang = (i / 3) * Math.PI * 2;
+        addMesh(geom, i === 1 ? 0x5fbb40 : (i === 0 ? 0x7fd550 : 0x4ea035), {
+          position: [Math.cos(ang) * 0.07, 0.04 + i * 0.02, Math.sin(ang) * 0.07],
+          rotation: [0, Math.random() * Math.PI * 2, 0],
+          flatShading: true, roughness: 0.6
         });
       }
       break;
     }
     case 'tomato': {
-      // 2 rodajas de tomate (slices) — se ven mucho mejor desde arriba
+      // 2 rodajas de tomate compactas
       for (let s = 0; s < 2; s++) {
-        const ox = s === 0 ? -0.08 : 0.08;
-        const oz = s === 0 ? 0.05 : -0.05;
-        addMesh(new THREE.CylinderGeometry(0.14, 0.14, 0.05, 16), 0xe63946, {
-          position: [ox, s * 0.06, oz], roughness: 0.4
+        const ox = s === 0 ? -0.07 : 0.07;
+        const oz = s === 0 ? 0.04 : -0.04;
+        addMesh(new THREE.CylinderGeometry(0.10, 0.10, 0.035, 16), 0xe63946, {
+          position: [ox, 0.03 + s * 0.045, oz], roughness: 0.4
         });
-        addMesh(new THREE.CylinderGeometry(0.10, 0.10, 0.04, 16), 0xff7a87, {
-          position: [ox, s * 0.06 + 0.04, oz]
+        addMesh(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 16), 0xff7a87, {
+          position: [ox, 0.05 + s * 0.045, oz]
         });
-        // semillitas
-        for (let i = 0; i < 5; i++) {
-          const ang = (i / 5) * Math.PI * 2;
-          addMesh(new THREE.SphereGeometry(0.012, 4, 3), 0xfae8a8, {
-            position: [ox + Math.cos(ang) * 0.06, s * 0.06 + 0.05, oz + Math.sin(ang) * 0.06]
+        for (let i = 0; i < 4; i++) {
+          const ang = (i / 4) * Math.PI * 2;
+          addMesh(new THREE.SphereGeometry(0.011, 4, 3), 0xfae8a8, {
+            position: [ox + Math.cos(ang) * 0.045, 0.06 + s * 0.045, oz + Math.sin(ang) * 0.045]
           });
         }
       }
       break;
     }
     case 'cheese': {
-      // queso rallado: tiritas amarillas
-      for (let i = 0; i < 8; i++) {
+      // queso rallado: 10-12 tiritas más compactas
+      for (let i = 0; i < 10; i++) {
         const ang = Math.random() * Math.PI * 2;
-        addMesh(new THREE.BoxGeometry(0.04, 0.025, 0.18 + Math.random() * 0.08), 0xfcd820, {
-          position: [(Math.random() - 0.5) * 0.3, 0.02 + Math.random() * 0.04, (Math.random() - 0.5) * 0.3],
+        addMesh(new THREE.BoxGeometry(0.035, 0.022, 0.13 + Math.random() * 0.05), 0xfcd820, {
+          position: [(Math.random() - 0.5) * 0.22, 0.025 + Math.random() * 0.03, (Math.random() - 0.5) * 0.22],
           rotation: [0, ang, 0], roughness: 0.45
         });
       }
-      // un par de tiritas mas claras
-      for (let i = 0; i < 3; i++) {
-        addMesh(new THREE.BoxGeometry(0.04, 0.022, 0.16), 0xffe65e, {
-          position: [(Math.random() - 0.5) * 0.3, 0.04, (Math.random() - 0.5) * 0.3],
+      for (let i = 0; i < 4; i++) {
+        addMesh(new THREE.BoxGeometry(0.035, 0.02, 0.12), 0xffe65e, {
+          position: [(Math.random() - 0.5) * 0.22, 0.05, (Math.random() - 0.5) * 0.22],
           rotation: [0, Math.random() * Math.PI * 2, 0]
         });
       }
       break;
     }
     case 'onion': {
-      // 2 anillos de cebolla (tipo torus) — se reconocen al toque
-      for (let i = 0; i < 2; i++) {
-        addMesh(new THREE.TorusGeometry(0.13, 0.025, 6, 16), 0xf4ecd8, {
-          position: [(i - 0.5) * 0.2, 0.04, (i - 0.5) * 0.1],
-          rotation: [Math.PI / 2 + (i * 0.2), 0, 0],
+      // 3 anillos chicos
+      for (let i = 0; i < 3; i++) {
+        const ox = (i - 1) * 0.07;
+        const oz = (Math.random() - 0.5) * 0.04;
+        addMesh(new THREE.TorusGeometry(0.085, 0.022, 6, 14), 0xf4ecd8, {
+          position: [ox, 0.04 + i * 0.005, oz],
+          rotation: [Math.PI / 2 + (Math.random() - 0.5) * 0.2, 0, 0],
           roughness: 0.45
         });
-        addMesh(new THREE.TorusGeometry(0.09, 0.022, 6, 14), 0xfff5e0, {
-          position: [(i - 0.5) * 0.2, 0.045, (i - 0.5) * 0.1],
-          rotation: [Math.PI / 2 + (i * 0.2), 0, 0]
+        addMesh(new THREE.TorusGeometry(0.055, 0.018, 6, 12), 0xfff5e0, {
+          position: [ox, 0.045 + i * 0.005, oz],
+          rotation: [Math.PI / 2, 0, 0]
         });
       }
       break;
     }
-    case 'salsa':
-      addMesh(new THREE.SphereGeometry(0.22, 14, 10), 0xcc1818, {
-        scale: [1, 0.22, 1], roughness: 0.25
+    case 'salsa': {
+      // mancha de salsa con bordes irregulares
+      addMesh(new THREE.SphereGeometry(0.16, 14, 10), 0xcc1818, {
+        scale: [1, 0.18, 1], roughness: 0.25
       });
-      // brillo / chispa
-      addMesh(new THREE.SphereGeometry(0.04, 6, 5), 0xff5050, {
-        position: [0.1, 0.02, 0.05], roughness: 0.2
-      });
-      break;
-    case 'guac':
-      addMesh(new THREE.SphereGeometry(0.18, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0x6a8a30, {
-        roughness: 0.45
-      });
-      addMesh(new THREE.SphereGeometry(0.06, 6, 4), 0x8aaa50, {
-        position: [-0.05, 0.04, 0.06]
-      });
-      break;
-    case 'corn':
-      addMesh(new THREE.CylinderGeometry(0.08, 0.08, 0.32, 14), 0xfcd820, {
-        rotation: [0, 0, Math.PI / 2]
-      });
-      // granitos
+      // gotas alrededor
       for (let i = 0; i < 4; i++) {
-        addMesh(new THREE.SphereGeometry(0.025, 6, 4), 0xfff060, {
-          position: [(i - 1.5) * 0.07, 0.07, 0]
+        const ang = (i / 4) * Math.PI * 2 + Math.random() * 0.5;
+        const r = 0.14 + Math.random() * 0.04;
+        addMesh(new THREE.SphereGeometry(0.04, 6, 5), 0xcc1818, {
+          position: [Math.cos(ang) * r, 0.02, Math.sin(ang) * r],
+          scale: [1, 0.3, 1]
         });
       }
+      // chispas brillantes
+      addMesh(new THREE.SphereGeometry(0.025, 6, 5), 0xff5050, { position: [0.05, 0.04, 0.02] });
+      addMesh(new THREE.SphereGeometry(0.02, 6, 5), 0xff5050, { position: [-0.04, 0.04, -0.04] });
       break;
-    case 'beans':
-      for (let i = 0; i < 6; i++) {
-        addMesh(new THREE.SphereGeometry(0.06, 8, 6), 0x5a3010, {
-          scale: [1, 0.6, 1.5],
-          position: [(Math.random() - 0.5) * 0.3, 0.04, (Math.random() - 0.5) * 0.2],
+    }
+    case 'guac': {
+      // domo verde con bumps
+      addMesh(new THREE.SphereGeometry(0.13, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), 0x6a8a30, {
+        roughness: 0.55
+      });
+      // chunks claros
+      for (let i = 0; i < 3; i++) {
+        const ang = (i / 3) * Math.PI * 2;
+        addMesh(new THREE.SphereGeometry(0.045, 6, 4), 0x8aaa50, {
+          position: [Math.cos(ang) * 0.06, 0.05, Math.sin(ang) * 0.06]
+        });
+      }
+      // mota oscura
+      addMesh(new THREE.SphereGeometry(0.025, 5, 4), 0x4a6a20, { position: [0, 0.07, 0] });
+      break;
+    }
+    case 'corn': {
+      // mazorca pequeña
+      addMesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 12), 0xfcd820, {
+        rotation: [0, 0, Math.PI / 2]
+      });
+      // granitos en líneas
+      for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 2; j++) {
+          addMesh(new THREE.SphereGeometry(0.022, 6, 4), 0xfff060, {
+            position: [(i - 2) * 0.045, 0.05, j === 0 ? 0.025 : -0.025]
+          });
+        }
+      }
+      break;
+    }
+    case 'beans': {
+      // 7-8 frijolitos
+      for (let i = 0; i < 7; i++) {
+        addMesh(new THREE.SphereGeometry(0.05, 8, 6), 0x5a3010, {
+          scale: [1, 0.55, 1.5],
+          position: [(Math.random() - 0.5) * 0.22, 0.03, (Math.random() - 0.5) * 0.22],
           rotation: [0, Math.random() * Math.PI, 0],
           roughness: 0.5
         });
       }
+      // un par más claros
+      addMesh(new THREE.SphereGeometry(0.045, 8, 6), 0x7a4818, {
+        scale: [1, 0.55, 1.5], position: [0.04, 0.04, 0.02], rotation: [0, Math.random() * Math.PI, 0]
+      });
       break;
+    }
   }
   return group;
 }
