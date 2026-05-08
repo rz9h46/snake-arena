@@ -856,11 +856,19 @@ function drawZombieSprite(z) {
   const HAIR = '#3a2010';
   const OUT = '#1a1208';
 
-  // sombra
+  // sombra (no se mirroriza, va antes del flip)
   ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
   ctx.beginPath();
-  ctx.ellipse(cx + 2, groundY, 22, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx - 2, groundY, 22, 5, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // Flip horizontal alrededor de cx — los zombies miran a la izquierda
+  // (hacia donde caminan, hacia tu casa). Sin esto, los brazos extendidos
+  // quedaban hacia atrás y parecía que caminaban en reversa.
+  ctx.save();
+  ctx.translate(cx, 0);
+  ctx.scale(-1, 1);
+  ctx.translate(-cx, 0);
 
   // ===== piernas (pantalón + zapatos) =====
   ctx.strokeStyle = PANTS;
@@ -1092,6 +1100,9 @@ function drawZombieSprite(z) {
     ctx.stroke();
   }
 
+  // cerrar el flip — el resto (slow marker, hp bar) en orientación normal
+  ctx.restore();
+
   // marcador slow
   if (z.slowUntil > 0) {
     ctx.fillStyle = 'rgba(168, 230, 255, 0.5)';
@@ -1102,7 +1113,7 @@ function drawZombieSprite(z) {
     ctx.font = 'bold 14px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('❄', cx + 18, headY - 6);
+    ctx.fillText('❄', cx - 18, headY - 6);
   }
 
   // hp bar arriba
