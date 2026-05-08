@@ -208,9 +208,10 @@ function init3D() {
 
   const w = canvas.clientWidth || 600;
   const h = canvas.clientHeight || 260;
-  camera3d = new THREE.PerspectiveCamera(38, w / h, 0.1, 100);
-  camera3d.position.set(0, 2.6, 5.4);
-  camera3d.lookAt(0, -0.5, 0);
+  camera3d = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
+  // ángulo más cenital para ver la tortilla flat con todo arriba (estilo Cooking Fever)
+  camera3d.position.set(0, 4.2, 3.4);
+  camera3d.lookAt(0, -0.95, 0);
 
   renderer3d = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -295,9 +296,9 @@ function spawnShell() {
     tacoShellMesh = null;
   }
   tacoShellMesh = buildTacoShell();
-  tacoShellMesh.position.y = 3.5;            // empieza arriba
+  tacoShellMesh.position.y = 3.5;
   tacoShellMesh.userData.dropping = true;
-  tacoShellMesh.userData.targetY = -0.55;
+  tacoShellMesh.userData.targetY = -0.95;   // tortilla plana sobre el plato
   tacoShellMesh.userData.vy = 0;
   scene3d.add(tacoShellMesh);
   // pulso de luz cuando aterriza? lo dejamos solo el bounce
@@ -364,50 +365,55 @@ function resize3D() {
 }
 
 function buildTacoShell() {
+  // Tortilla PLANA estilo Cooking Fever: disco delgado, dorada con manchitas tostadas
   const group = new THREE.Group();
-  const r = 1.2;
-  const length = 2.4;
-  const geom = new THREE.CylinderGeometry(r, r, length, 48, 1, true, 0, Math.PI);
-  geom.rotateZ(Math.PI / 2);
-  geom.rotateX(Math.PI / 2);
+  const r = 1.6;
+  const thickness = 0.08;
+  // disco principal
+  const geom = new THREE.CylinderGeometry(r, r, thickness, 36);
   const mat = new THREE.MeshStandardMaterial({
     color: 0xfcd896,
-    roughness: 0.7,
-    metalness: 0,
-    side: THREE.DoubleSide
+    roughness: 0.75,
+    metalness: 0
   });
-  const shell = new THREE.Mesh(geom, mat);
-  shell.castShadow = true;
-  shell.receiveShadow = true;
-  group.add(shell);
-  // borde dorado en los extremos
-  const edgeMat = new THREE.MeshStandardMaterial({ color: 0xd4a050, roughness: 0.6 });
-  for (const ex of [length / 2, -length / 2]) {
-    const ringGeom = new THREE.TorusGeometry(r, 0.06, 6, 16, Math.PI);
-    const ring = new THREE.Mesh(ringGeom, edgeMat);
-    ring.position.x = ex;
-    ring.rotation.y = Math.PI / 2;
-    ring.rotation.x = Math.PI;
-    ring.castShadow = true;
-    group.add(ring);
-  }
-  // pequeñas manchitas tostadas
-  for (let i = 0; i < 8; i++) {
+  const tortilla = new THREE.Mesh(geom, mat);
+  tortilla.castShadow = true;
+  tortilla.receiveShadow = true;
+  group.add(tortilla);
+  // borde dorado tostado
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(r, 0.05, 6, 32),
+    new THREE.MeshStandardMaterial({ color: 0xd4a050, roughness: 0.65 })
+  );
+  ring.rotation.x = Math.PI / 2;
+  ring.position.y = thickness / 2 - 0.005;
+  group.add(ring);
+  // manchitas tostadas arriba (puntos oscuros tipo "burned spots")
+  for (let i = 0; i < 14; i++) {
+    const spotR = 0.06 + Math.random() * 0.05;
     const sp = new THREE.Mesh(
-      new THREE.SphereGeometry(0.06, 6, 4),
-      new THREE.MeshStandardMaterial({ color: 0xb47020, roughness: 0.6 })
+      new THREE.CircleGeometry(spotR, 8),
+      new THREE.MeshStandardMaterial({ color: 0xb47020, roughness: 0.7 })
     );
-    sp.scale.set(1.5, 0.2, 1);
-    const angle = Math.PI + 0.3 + (Math.random() * (Math.PI - 0.6));
-    sp.position.set(
-      (Math.random() - 0.5) * length * 0.85,
-      Math.sin(angle) * (r - 0.01),
-      Math.cos(angle) * (r - 0.01)
-    );
-    sp.rotation.x = -angle + Math.PI / 2;
+    sp.rotation.x = -Math.PI / 2;
+    const ang = Math.random() * Math.PI * 2;
+    const dist = Math.random() * (r - 0.15);
+    sp.position.set(Math.cos(ang) * dist, thickness / 2 + 0.001, Math.sin(ang) * dist);
     group.add(sp);
   }
-  group.position.y = -0.55;
+  // pequeñas burbujas en la masa
+  for (let i = 0; i < 6; i++) {
+    const sp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.04, 6, 4),
+      new THREE.MeshStandardMaterial({ color: 0xfae5b0, roughness: 0.6 })
+    );
+    const ang = Math.random() * Math.PI * 2;
+    const dist = Math.random() * (r - 0.2);
+    sp.position.set(Math.cos(ang) * dist, thickness / 2, Math.sin(ang) * dist);
+    sp.scale.set(1, 0.4, 1);
+    group.add(sp);
+  }
+  group.position.y = -0.95;   // sentada en el plato
   return group;
 }
 
@@ -468,29 +474,60 @@ function buildIngredient(id) {
       }
       break;
     }
-    case 'tomato':
-      addMesh(new THREE.SphereGeometry(0.14, 16, 12), 0xe63946, { roughness: 0.35 });
-      addMesh(new THREE.SphereGeometry(0.14, 16, 12), 0xc62838, {
-        scale: [0.9, 0.9, 0.9], position: [0.04, -0.02, 0.02], roughness: 0.5
-      });
+    case 'tomato': {
+      // 2 rodajas de tomate (slices) — se ven mucho mejor desde arriba
+      for (let s = 0; s < 2; s++) {
+        const ox = s === 0 ? -0.08 : 0.08;
+        const oz = s === 0 ? 0.05 : -0.05;
+        addMesh(new THREE.CylinderGeometry(0.14, 0.14, 0.05, 16), 0xe63946, {
+          position: [ox, s * 0.06, oz], roughness: 0.4
+        });
+        addMesh(new THREE.CylinderGeometry(0.10, 0.10, 0.04, 16), 0xff7a87, {
+          position: [ox, s * 0.06 + 0.04, oz]
+        });
+        // semillitas
+        for (let i = 0; i < 5; i++) {
+          const ang = (i / 5) * Math.PI * 2;
+          addMesh(new THREE.SphereGeometry(0.012, 4, 3), 0xfae8a8, {
+            position: [ox + Math.cos(ang) * 0.06, s * 0.06 + 0.05, oz + Math.sin(ang) * 0.06]
+          });
+        }
+      }
       break;
-    case 'cheese':
-      addMesh(new THREE.BoxGeometry(0.36, 0.08, 0.28), 0xfcd820, { roughness: 0.4 });
-      // hoyitos del queso
+    }
+    case 'cheese': {
+      // queso rallado: tiritas amarillas
+      for (let i = 0; i < 8; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        addMesh(new THREE.BoxGeometry(0.04, 0.025, 0.18 + Math.random() * 0.08), 0xfcd820, {
+          position: [(Math.random() - 0.5) * 0.3, 0.02 + Math.random() * 0.04, (Math.random() - 0.5) * 0.3],
+          rotation: [0, ang, 0], roughness: 0.45
+        });
+      }
+      // un par de tiritas mas claras
       for (let i = 0; i < 3; i++) {
-        addMesh(new THREE.SphereGeometry(0.025, 6, 6), 0xeac010, {
-          position: [(Math.random() - 0.5) * 0.25, 0.05, (Math.random() - 0.5) * 0.18]
+        addMesh(new THREE.BoxGeometry(0.04, 0.022, 0.16), 0xffe65e, {
+          position: [(Math.random() - 0.5) * 0.3, 0.04, (Math.random() - 0.5) * 0.3],
+          rotation: [0, Math.random() * Math.PI * 2, 0]
         });
       }
       break;
-    case 'onion':
-      addMesh(new THREE.SphereGeometry(0.1, 14, 10), 0xf4ecd8, {
-        scale: [1, 0.55, 1], roughness: 0.4
-      });
-      addMesh(new THREE.SphereGeometry(0.06, 8, 6), 0xc8b890, {
-        scale: [1, 0.4, 1], position: [0, 0.04, 0]
-      });
+    }
+    case 'onion': {
+      // 2 anillos de cebolla (tipo torus) — se reconocen al toque
+      for (let i = 0; i < 2; i++) {
+        addMesh(new THREE.TorusGeometry(0.13, 0.025, 6, 16), 0xf4ecd8, {
+          position: [(i - 0.5) * 0.2, 0.04, (i - 0.5) * 0.1],
+          rotation: [Math.PI / 2 + (i * 0.2), 0, 0],
+          roughness: 0.45
+        });
+        addMesh(new THREE.TorusGeometry(0.09, 0.022, 6, 14), 0xfff5e0, {
+          position: [(i - 0.5) * 0.2, 0.045, (i - 0.5) * 0.1],
+          rotation: [Math.PI / 2 + (i * 0.2), 0, 0]
+        });
+      }
       break;
+    }
     case 'salsa':
       addMesh(new THREE.SphereGeometry(0.22, 14, 10), 0xcc1818, {
         scale: [1, 0.22, 1], roughness: 0.25
@@ -533,17 +570,40 @@ function buildIngredient(id) {
   return group;
 }
 
-function placeIngredient3D(id, slotIdx, total) {
+// Slots fijos sobre la tortilla (vista cenital). Cada ingrediente que
+// entra ocupa el primer slot vacío, cuando se va el slot queda libre.
+// Distribuidos en círculo + uno al centro para que se vean todos.
+const TACO_SLOTS = [
+  { x:  0.0,   z:  0.0  },   // centro
+  { x: -0.75,  z: -0.15 },   // izquierda
+  { x:  0.75,  z: -0.15 },   // derecha
+  { x: -0.45,  z:  0.55 },   // abajo izq
+  { x:  0.45,  z:  0.55 },   // abajo der
+  { x:  0.0,   z: -0.7  },   // arriba
+  { x: -0.7,   z:  0.7  },   // extra
+  { x:  0.7,   z:  0.7  }
+];
+
+function findFreeSlot() {
+  const used = new Set();
+  for (const m of ingredientMeshes.values()) {
+    if (m.userData.slotIdx !== undefined) used.add(m.userData.slotIdx);
+  }
+  for (let i = 0; i < TACO_SLOTS.length; i++) {
+    if (!used.has(i)) return i;
+  }
+  return 0;
+}
+
+function placeIngredient3D(id) {
   if (!scene3d) return;
+  const slotIdx = findFreeSlot();
+  const slot = TACO_SLOTS[slotIdx];
   const mesh = buildIngredient(id);
-  // posición a lo largo del shell
-  const length = 2.4;
-  const span = length - 0.5;
-  const x = -span / 2 + (span * (slotIdx + 0.5) / Math.max(1, total));
-  const z = (Math.random() - 0.5) * 0.4;
-  const targetY = -0.55 + 0.05 + slotIdx * 0.02;
-  mesh.position.set(x + (Math.random() - 0.5) * 0.15, 2.5, z);
-  mesh.userData.targetY = targetY;
+  mesh.userData.slotIdx = slotIdx;
+  // empieza arriba, cae al slot
+  mesh.position.set(slot.x, 2.5, slot.z);
+  mesh.userData.targetY = -0.85;     // sentado encima de la tortilla plana
   mesh.userData.dropping = true;
   mesh.userData.vy = 0;
   mesh.rotation.y = Math.random() * Math.PI * 2;
@@ -731,9 +791,9 @@ function renderTaco() {
     if (!tacoSet.has(id)) removeIngredient3D(id);
   }
   // agregar nuevos
-  state.taco.forEach((id, idx) => {
+  state.taco.forEach((id) => {
     if (!ingredientMeshes.has(id)) {
-      placeIngredient3D(id, idx, state.taco.length);
+      placeIngredient3D(id);
     }
   });
   // hint visible solo si vacío
