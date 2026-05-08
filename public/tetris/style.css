@@ -130,6 +130,13 @@ html, body {
 }
 .board-overlay.show { opacity: 1; }
 
+@keyframes tetrisFloat {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  80% { opacity: 1; transform: translate(-50%, -85%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -110%) scale(0.95); }
+}
+
 #touch-controls {
   display: none;
   margin-top: 14px;

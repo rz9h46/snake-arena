@@ -84,6 +84,7 @@ class TetrisBoard {
     this.flashRows = []; // filas que parpadean al despejar
     this.flashTime = 0;
     this.dropAnim = 0; // intensidad del flash post hard drop
+    this.pendingClears = 0;
     this.spawnPiece();
   }
 
@@ -102,6 +103,7 @@ class TetrisBoard {
     this.flashRows = [];
     this.flashTime = 0;
     this.dropAnim = 0;
+    this.pendingClears = 0;
     this.spawnPiece();
   }
 
@@ -206,6 +208,10 @@ class TetrisBoard {
       if (ny >= 0 && ny < ROWS) this.grid[ny][nx] = color;
     }
     const cleared = this.clearLines();
+    // pendingClears: el loop lee y resetea esto cada frame, así
+    // tanto las clears por gravedad como por hard drop disparan
+    // el envío de basura al rival (antes solo gravedad lo hacía).
+    if (cleared > 0) this.pendingClears = (this.pendingClears || 0) + cleared;
     this.spawnPiece();
     return cleared;
   }
@@ -274,13 +280,12 @@ class TetrisBoard {
       if (!this.alive) break;
       if (!this.collides(this.piece.x, this.piece.y + 1, this.piece.rot)) {
         this.piece.y++;
-        if (isSoftDropping) this.score += 1; // bonus por soft drop, estilo Tetris clásico
+        if (isSoftDropping) this.score += 1;
       } else {
         this.lockPiece();
-        return 1;
+        return;
       }
     }
-    return 0;
   }
 }
 
@@ -602,6 +607,30 @@ function openRanking() {
 }
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
+function showSendPopup(ui, lines) {
+  showFloatingText(ui, `📤 +${lines} línea${lines > 1 ? 's' : ''}`, '#5fbb40');
+}
+function showReceivePopup(ui, lines) {
+  showFloatingText(ui, `📥 +${lines} línea${lines > 1 ? 's' : ''}`, '#ff5e7a');
+}
+function showFloatingText(ui, text, color) {
+  if (!ui || !ui.canvas) return;
+  const wrap = ui.canvas.parentElement;
+  if (!wrap) return;
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.style.cssText = `
+    position:absolute; left:50%; top:30%; transform:translate(-50%, -50%);
+    color:${color}; font-weight:800; font-size:18px; letter-spacing:1px;
+    text-shadow:0 0 14px ${color}, 0 4px 8px rgba(0,0,0,0.85);
+    pointer-events:none; z-index:10;
+    animation: tetrisFloat 1.1s ease-out forwards;
+  `;
+  if (getComputedStyle(wrap).position === 'static') wrap.style.position = 'relative';
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 1100);
+}
+
 function pushScore(score, lines, level) {
   const ranks = JSON.parse(localStorage.getItem('tetris-ranks') || '[]');
   ranks.push({ name: 'Tú', score, lines, level, date: Date.now() });
@@ -733,17 +762,30 @@ function loop(now) {
     let pendingGarbage = [0, 0];
     for (let i = 0; i < state.boards.length; i++) {
       const b = state.boards[i];
-      const cleared = b.update(dt, state.softDrops[i]);
-      if (cleared > 0) {
+      b.update(dt, state.softDrops[i]);
+      // pendingClears: número real de líneas despejadas en este frame
+      // (gravity-lock o hard-drop). update() retornaba 1 antes, no servía.
+      if ((b.pendingClears || 0) > 0) {
+        const cleared = b.pendingClears;
+        b.pendingClears = 0;
         beep(cleared >= 4 ? 'tetris' : 'clear');
         if (state.players === 2 && state.garbageOn) {
           const send = cleared === 2 ? 1 : cleared === 3 ? 2 : cleared === 4 ? 4 : 0;
-          pendingGarbage[1 - i] += send;
+          if (send > 0) {
+            pendingGarbage[1 - i] += send;
+            // popup visual de envío
+            showSendPopup(state.uis[i], send);
+          }
         }
       }
     }
     if (state.players === 2) {
-      pendingGarbage.forEach((g, i) => { if (g > 0) state.boards[i].receiveGarbage(g); });
+      pendingGarbage.forEach((g, i) => {
+        if (g > 0) {
+          state.boards[i].receiveGarbage(g);
+          showReceivePopup(state.uis[i], g);
+        }
+      });
     }
     // detectar game over
     for (let i = 0; i < state.boards.length; i++) {
