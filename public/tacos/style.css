@@ -234,20 +234,59 @@ html, body {
   display: block;
   background: #1a0e08;
 }
-#taco-empty-hint {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  color: rgba(255, 215, 94, 0.55);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 2px;
+.grid-divider {
+  font-size: 10px;
   text-transform: uppercase;
-  pointer-events: none;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  transition: opacity .25s;
+  letter-spacing: 2px;
+  color: var(--gold);
+  font-weight: 800;
+  margin: 12px 0 6px;
+  padding-left: 4px;
+  display: flex; align-items: center; gap: 8px;
 }
-#taco-empty-hint.hidden { opacity: 0; }
+.grid-divider::before, .grid-divider::after {
+  content: ''; flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 94, 0.4), transparent);
+}
+#drinks-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+@media (max-width: 500px) { #drinks-grid { grid-template-columns: repeat(3, 1fr); } }
+.drink-btn {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 4px 4px;
+  cursor: pointer;
+  transition: all .12s;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.drink-btn:hover {
+  background: rgba(255, 215, 94, 0.12);
+  transform: translateY(-2px);
+}
+.drink-btn:active { transform: scale(0.95); }
+.drink-btn.added {
+  box-shadow: 0 0 0 2px var(--gold);
+  background: rgba(255, 215, 94, 0.15);
+}
+.drink-btn .ico { font-size: 22px; line-height: 1; }
+.drink-btn .nm { font-size: 9px; color: var(--muted); margin-top: 1px; font-weight: 700; }
+.order-plus {
+  font-size: 22px;
+  color: var(--muted);
+  font-weight: 700;
+  align-self: center;
+  margin: 0 4px;
+}
 
 /* ===== Ingredient palette ===== */
 #ingredients-grid {

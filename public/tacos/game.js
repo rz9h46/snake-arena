@@ -15,6 +15,16 @@ const INGREDIENTS = [
 ];
 const ING_BY_ID = Object.fromEntries(INGREDIENTS.map(i => [i.id, i]));
 
+const DRINKS = [
+  { id: 'horchata', ico: '🥛', name: 'Horchata',  color: 0xf4e8d0 },
+  { id: 'cola',     ico: '🥤', name: 'Refresco',  color: 0x3a1810 },
+  { id: 'limonada', ico: '🍋', name: 'Limonada',  color: 0xfae040 },
+  { id: 'jugo',     ico: '🧃', name: 'Jugo',      color: 0xff8838 },
+  { id: 'agua',     ico: '💧', name: 'Agua',      color: 0xa8d6e6 },
+  { id: 'cerveza',  ico: '🍺', name: 'Cerveza',   color: 0xf4c020 }
+];
+const DRINK_BY_ID = Object.fromEntries(DRINKS.map(d => [d.id, d]));
+
 const CUSTOMERS = [
   { ico: '👨', name: 'Carlos' },
   { ico: '👩', name: 'María' },
@@ -33,6 +43,7 @@ const CUSTOMERS = [
 const state = {
   customer: null,
   taco: [],
+  tacoDrink: null,    // id de la bebida que servís actualmente
   score: 0,
   combo: 1,
   level: 1,
@@ -64,18 +75,24 @@ function makeOrder(level) {
 function newCustomer() {
   const c = CUSTOMERS[randInt(0, CUSTOMERS.length - 1)];
   const order = makeOrder(state.level);
+  // 75% de chance de pedir bebida (sube con el nivel)
+  const drinkChance = Math.min(0.95, 0.65 + state.level * 0.04);
+  const drink = Math.random() < drinkChance ? DRINKS[randInt(0, DRINKS.length - 1)].id : null;
   const maxPatience = Math.max(6, 14 - (state.level - 1) * 0.6) * 1000;
   state.customer = {
     ico: c.ico,
     name: c.name,
     order,
+    drink,
     patience: maxPatience,
     maxPatience,
     served: false
   };
   state.taco = [];
+  state.tacoDrink = null;
   clearTaco3D();
-  spawnShell();           // 🌮 la fajita aparece con drop-in cuando llega el cliente
+  removeDrink3D();
+  spawnShell();
   renderCustomer(true);
   renderTaco();
   renderIngredients();
@@ -84,28 +101,45 @@ function newCustomer() {
 function addIngredient(id) {
   if (!state.alive || state.paused || !state.customer || state.customer.served) return;
   if (state.taco.includes(id)) return;
-  state.taco.push(id);
-  beep('add');
-  // si NO está en la orden: penalización
+  // si NO está en la orden: rechazar inmediatamente (no se agrega)
   if (!state.customer.order.includes(id)) {
     state.score = Math.max(0, state.score - 5);
     state.combo = 1;
     flashFeedback('😬 No pidió eso!', '#ff5e7a');
     beep('wrong');
-    // saca el ingrediente erróneo después de un toque
-    setTimeout(() => {
-      if (state.customer && !state.customer.served) {
-        state.taco = state.taco.filter(i => i !== id);
-        renderTaco();
-        renderIngredients();
-      }
-    }, 700);
+    return;
   }
+  state.taco.push(id);
+  beep('add');
   renderTaco();
   renderIngredients();
-  // auto-servir si coincide exactamente
   if (matchesOrder()) {
-    setTimeout(() => { if (!state.customer.served) serve(); }, 250);
+    setTimeout(() => { if (!state.customer.served) serve(); }, 350);
+  }
+}
+
+function toggleDrink(id) {
+  if (!state.alive || state.paused || !state.customer || state.customer.served) return;
+  // si pidió otra bebida, advertir
+  if (state.customer.drink && state.customer.drink !== id) {
+    if (!state.tacoDrink) {
+      // marca de penalización suave (no resta hasta servir)
+      flashFeedback('🥤 No es esa bebida', '#ff5e7a');
+      beep('wrong');
+    }
+  }
+  if (state.tacoDrink === id) {
+    state.tacoDrink = null;
+    removeDrink3D();
+  } else {
+    state.tacoDrink = id;
+    placeDrink3D(id);
+  }
+  beep('add');
+  renderCustomer();
+  renderIngredients();
+  if (matchesOrder()) {
+    setTimeout(() => { if (!state.customer.served) serve(); }, 350);
   }
 }
 
@@ -125,11 +159,14 @@ function clearTaco() {
 
 function matchesOrder() {
   if (!state.customer) return false;
+  // ingredientes
   const orderSet = new Set(state.customer.order);
   const tacoSet = new Set(state.taco);
   if (state.taco.length !== state.customer.order.length) return false;
   for (const i of state.customer.order) if (!tacoSet.has(i)) return false;
   for (const i of state.taco) if (!orderSet.has(i)) return false;
+  // bebida
+  if ((state.customer.drink || null) !== (state.tacoDrink || null)) return false;
   return true;
 }
 
@@ -286,6 +323,8 @@ function init3D() {
 const flyingItems = [];
 // Chispas al servir
 const sparkles = [];
+// Vaso de bebida actualmente servido (si hay)
+let drinkMesh = null;
 
 function spawnShell() {
   if (!scene3d) return;
@@ -308,9 +347,10 @@ function flyAwayTaco() {
   if (!scene3d) return;
   // chispas en la posición del shell
   spawnSparkles(0, -0.1, 0);
-  // empezar fly-away del shell + ingredientes
+  // empezar fly-away del shell + ingredientes + bebida
   const items = [];
   if (tacoShellMesh) items.push(tacoShellMesh);
+  if (drinkMesh) items.push(drinkMesh);
   for (const m of ingredientMeshes.values()) items.push(m);
   for (const m of items) {
     m.userData.flying = true;
@@ -326,6 +366,7 @@ function flyAwayTaco() {
     flyingItems.push(m);
   }
   tacoShellMesh = null;
+  drinkMesh = null;
   ingredientMeshes.clear();
 }
 
@@ -353,6 +394,111 @@ function spawnSparkles(cx, cy, cz) {
     sparkles.push(m);
     scene3d.add(m);
   }
+}
+
+// ==================== Bebida 3D (vaso al lado del taco) ====================
+function buildDrink(drinkId) {
+  const drink = DRINK_BY_ID[drinkId];
+  if (!drink) return null;
+  const group = new THREE.Group();
+  // vaso (transparente con tinte)
+  const glassGeom = new THREE.CylinderGeometry(0.18, 0.16, 0.55, 18, 1, true);
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0xeaf6ff, transparent: true, opacity: 0.4,
+    roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide
+  });
+  const glass = new THREE.Mesh(glassGeom, glassMat);
+  glass.castShadow = true;
+  group.add(glass);
+  // borde superior del vaso
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.18, 0.012, 6, 18),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 })
+  );
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.275;
+  group.add(rim);
+  // base del vaso
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.16, 0.16, 0.02, 18),
+    new THREE.MeshStandardMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0.5 })
+  );
+  base.position.y = -0.275;
+  group.add(base);
+  // líquido (cilindro coloreado dentro)
+  const liquid = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.165, 0.148, 0.45, 18),
+    new THREE.MeshStandardMaterial({ color: drink.color, roughness: 0.4, metalness: 0 })
+  );
+  liquid.position.y = -0.04;
+  liquid.castShadow = true;
+  group.add(liquid);
+  // burbujitas si es cola/cerveza/limonada
+  if (drinkId === 'cola' || drinkId === 'cerveza' || drinkId === 'limonada') {
+    for (let i = 0; i < 5; i++) {
+      const bub = new THREE.Mesh(
+        new THREE.SphereGeometry(0.02, 6, 4),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 })
+      );
+      bub.position.set(
+        (Math.random() - 0.5) * 0.2, rand(-0.15, 0.15), (Math.random() - 0.5) * 0.2
+      );
+      group.add(bub);
+    }
+  }
+  // pajita roja
+  const straw = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.02, 0.85, 6),
+    new THREE.MeshStandardMaterial({ color: 0xff5e7a, roughness: 0.4 })
+  );
+  straw.position.set(0.08, 0.18, 0);
+  straw.rotation.z = 0.18;
+  straw.castShadow = true;
+  group.add(straw);
+  // hielo si agua/limonada/jugo
+  if (drinkId === 'agua' || drinkId === 'limonada' || drinkId === 'jugo') {
+    for (let i = 0; i < 3; i++) {
+      const ice = new THREE.Mesh(
+        new THREE.BoxGeometry(0.07, 0.07, 0.07),
+        new THREE.MeshStandardMaterial({
+          color: 0xddf0ff, transparent: true, opacity: 0.7, roughness: 0.2
+        })
+      );
+      ice.position.set(rand(-0.08, 0.08), 0.1 + i * 0.02, rand(-0.08, 0.08));
+      ice.rotation.set(Math.random(), Math.random(), Math.random());
+      group.add(ice);
+    }
+  }
+  return group;
+}
+
+function rand(a, b) { return Math.random() * (b - a) + a; }
+
+function placeDrink3D(drinkId) {
+  if (!scene3d) return;
+  removeDrink3D(true);
+  drinkMesh = buildDrink(drinkId);
+  if (!drinkMesh) return;
+  // a la derecha de la tortilla, sentado en el plato
+  drinkMesh.position.set(1.95, 2.5, 0.1);
+  drinkMesh.userData.targetY = -0.6;
+  drinkMesh.userData.dropping = true;
+  drinkMesh.userData.vy = 0;
+  scene3d.add(drinkMesh);
+}
+
+function removeDrink3D(immediate = false) {
+  if (!drinkMesh) return;
+  if (immediate) {
+    scene3d.remove(drinkMesh);
+    disposeMesh(drinkMesh);
+  } else {
+    drinkMesh.userData.removing = true;
+    drinkMesh.userData.vy = 4;
+    drinkMesh.userData.life = 0.6;
+    meshPool.push(drinkMesh);
+  }
+  drinkMesh = null;
 }
 
 function resize3D() {
@@ -420,6 +566,8 @@ function buildTacoShell() {
 function buildIngredient(id) {
   const group = new THREE.Group();
   group.userData.id = id;
+  // Escala global para que los ingredientes se vean prominentes desde la cámara cenital
+  group.scale.set(1.55, 1.55, 1.55);
   const addMesh = (geom, color, opts = {}) => {
     const mat = new THREE.MeshStandardMaterial({
       color, roughness: opts.roughness ?? 0.55, metalness: opts.metalness ?? 0,
@@ -603,7 +751,7 @@ function placeIngredient3D(id) {
   mesh.userData.slotIdx = slotIdx;
   // empieza arriba, cae al slot
   mesh.position.set(slot.x, 2.5, slot.z);
-  mesh.userData.targetY = -0.85;     // sentado encima de la tortilla plana
+  mesh.userData.targetY = -0.78;     // sentado prominente encima de la tortilla
   mesh.userData.dropping = true;
   mesh.userData.vy = 0;
   mesh.rotation.y = Math.random() * Math.PI * 2;
@@ -661,6 +809,22 @@ function update3D(dt) {
         m.userData.dropping = false;
         m.userData.vy = 0;
         m.rotation.y = 0;
+      } else {
+        m.userData.vy = -m.userData.vy * 0.4;
+      }
+    }
+  }
+
+  // drop-in del vaso de bebida
+  if (drinkMesh && drinkMesh.userData.dropping) {
+    const m = drinkMesh;
+    m.userData.vy = (m.userData.vy || 0) - 18 * dt;
+    m.position.y += m.userData.vy * dt;
+    if (m.position.y <= m.userData.targetY) {
+      m.position.y = m.userData.targetY;
+      if (Math.abs(m.userData.vy) < 1.5) {
+        m.userData.dropping = false;
+        m.userData.vy = 0;
       } else {
         m.userData.vy = -m.userData.vy * 0.4;
       }
@@ -755,7 +919,7 @@ const customerName = document.getElementById('customer-name');
 const customerOrderEl = document.getElementById('customer-order');
 const patienceFill = document.getElementById('patience-fill');
 const ingredientsGrid = document.getElementById('ingredients-grid');
-const tacoEmptyHint = document.getElementById('taco-empty-hint');
+const drinksGrid = document.getElementById('drinks-grid');
 
 function renderCustomer(animate = false) {
   if (!state.customer) {
@@ -781,6 +945,30 @@ function renderCustomer(animate = false) {
     div.title = ing.name;
     customerOrderEl.appendChild(div);
   }
+  // bebida pedida (si hay)
+  if (state.customer.drink) {
+    const sep = document.createElement('span');
+    sep.className = 'order-plus';
+    sep.textContent = '+';
+    customerOrderEl.appendChild(sep);
+    const d = DRINK_BY_ID[state.customer.drink];
+    const div = document.createElement('div');
+    div.className = 'order-ing' + (state.tacoDrink === d.id ? ' have' : '');
+    div.textContent = d.ico;
+    div.title = d.name;
+    customerOrderEl.appendChild(div);
+  }
+}
+
+function renderDrinks() {
+  drinksGrid.innerHTML = '';
+  DRINKS.forEach((drink) => {
+    const btn = document.createElement('button');
+    btn.className = 'drink-btn' + (state.tacoDrink === drink.id ? ' added' : '');
+    btn.innerHTML = `<span class="ico">${drink.ico}</span><span class="nm">${drink.name}</span>`;
+    btn.addEventListener('click', () => toggleDrink(drink.id));
+    drinksGrid.appendChild(btn);
+  });
 }
 
 function renderTaco() {
@@ -796,8 +984,6 @@ function renderTaco() {
       placeIngredient3D(id);
     }
   });
-  // hint visible solo si vacío
-  if (tacoEmptyHint) tacoEmptyHint.classList.toggle('hidden', state.taco.length > 0);
 }
 
 function renderIngredients() {
@@ -812,6 +998,7 @@ function renderIngredients() {
     });
     ingredientsGrid.appendChild(btn);
   });
+  renderDrinks();
   // re-render order para actualizar "have"
   if (state.customer) {
     customerOrderEl.innerHTML = '';
